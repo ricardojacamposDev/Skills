@@ -41,6 +41,7 @@ Reduza custo e consumo de recursos sem trocar um problema mensurável por uma ot
 - **CPU alta:** procure hotspots, complexidade superlinear, expressões regulares patológicas, compressão e serialização repetidas.
 - **Memória alta:** examine retenção, cardinalidade, alocações temporárias, caches e carregamento integral de coleções.
 - **Latência alta:** decomponha tempo de fila, CPU, I/O, rede e dependências; não use apenas a média.
+- **Sites e apps web:** avalie LCP, INP e CLS junto com tamanho de bundles, imagens, fontes, requisições e hidratação. Use medições de laboratório para reproduzir e comparar mudanças; confronte-as com dados reais de usuários quando disponíveis e autorizados, sem tratar uma fonte como substituta da outra.
 - **Custo alto:** normalize por unidade de trabalho e considere instâncias ociosas, transferência, logs, armazenamento e retries, não só preço da máquina.
 - **Throughput baixo:** verifique contenção, locks, conexões, lotes, limites de concorrência e saturação downstream.
 
