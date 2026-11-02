@@ -1,11 +1,11 @@
 ---
 name: eficiencia-computacional
-description: Otimiza desempenho e economia computacional — CPU, memória, alocações, I/O, rede, energia e custo de nuvem — com profiling e benchmarks antes e depois. Use sempre que o usuário mencionar lentidão, performance, complexidade, uso de recursos, custo por requisição, eficiência energética ou otimização de código e infraestrutura, mesmo sem pedir explicitamente uma análise de desempenho.
+description: Otimiza desempenho e economia computacional — CPU, memória, alocações, I/O, rede, energia e custo de nuvem — com profiling e benchmarks antes e depois, sem enfraquecer controles de segurança ou expor dados. Use quando o usuário mencionar lentidão, performance, complexidade, uso de recursos, custo por requisição, eficiência energética, otimização segura ou riscos de vulnerabilidade e vazamento ligados a mudanças de desempenho.
 ---
 
 # Eficiência computacional
 
-Reduza custo e consumo de recursos sem trocar um problema mensurável por uma otimização prematura. Preserve corretude, segurança, privacidade e legibilidade; uma melhoria só conta quando é medida em carga representativa.
+Reduza custo e consumo de recursos sem trocar um problema mensurável por uma otimização prematura. Segurança, privacidade e corretude são requisitos inegociáveis: não enfraqueça controles para obter desempenho, e trate vulnerabilidades e riscos de vazamento encontrados como resultados prioritários. Uma melhoria só conta quando é medida em carga representativa.
 
 ## Fluxo de trabalho
 
@@ -29,12 +29,19 @@ Reduza custo e consumo de recursos sem trocar um problema mensurável por uma ot
    - Mantenha comportamento observável e contratos estáveis, salvo mudança solicitada.
    - Ao introduzir cache, paralelismo ou processamento em lote, trate invalidação, limites, concorrência, backpressure e isolamento entre tenants.
    - Evite caches sem limite, pools sem teto e buffers que apenas desloquem o problema para memória.
+   - Antes de alterar o caminho quente, avalie riscos de negação de serviço por consumo descontrolado, ReDoS, entradas sem limite, cache poisoning, condições de corrida e vazamento entre usuários ou tenants.
+   - Não remova ou afrouxe autenticação, autorização, validação, limites, criptografia ou auditoria para reduzir latência. Em cache, preserve o contexto de autorização e a separação dos dados; nunca sirva conteúdo antes de verificar acesso.
 
 5. **Valide o resultado**
    - Execute testes funcionais e de concorrência relevantes.
    - Compare antes/depois na mesma condição e informe mediana, dispersão e tamanho da amostra quando disponíveis.
    - Verifique se a melhoria local não piorou latência de cauda, memória, custo total ou outra etapa.
+   - Teste limites e entradas malformadas/adversariais, autorização, isolamento entre tenants e comportamento sob carga; confirme que a mitigação não introduziu vulnerabilidades nem exposição de dados.
    - Reverta ou descarte otimizações sem ganho relevante.
+6. **Proteja os dados da investigação**
+   - Prefira dados sintéticos ou anonimizados em perfis e benchmarks; não copie dados pessoais reais para ferramentas, logs ou relatórios sem autorização e necessidade.
+   - Evite registrar segredos, tokens, conteúdo sensível ou payloads completos em traces e artefatos. Restrinja acesso e retenção dos dados de diagnóstico conforme as práticas do projeto.
+   - Se uma medição revelar segredo ou dado sensível exposto, não o reproduza na entrega; informe a localização e recomende contenção e rotação quando aplicável.
 
 ## Atalhos de diagnóstico
 
@@ -58,6 +65,6 @@ Apresente, de forma concisa:
 3. **Mudança realizada ou proposta** — arquivos/componentes e por quê.
 4. **Resultado comparativo** — antes/depois, unidades, variância e trade-offs.
 5. **Validação** — testes executados e riscos remanescentes.
-6. **Próximo passo** — somente se houver ganho esperado proporcional ao esforço.
+6. **Próximo passo e segurança** — informe riscos remanescentes, mitigação recomendada e próximos passos proporcionais ao ganho e à gravidade.
 
 Se não houver dados para medir, entregue um plano mínimo de instrumentação e não invente percentuais de melhoria. Para gargalos de capacidade, filas ou autoscaling, complemente com `escalabilidade-resiliente`.
