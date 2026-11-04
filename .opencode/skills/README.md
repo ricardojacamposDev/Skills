@@ -143,8 +143,16 @@ Adapte este formato ao trabalho:
 
 > Use `[nome-da-skill]` para `[objetivo]` em `[componente/escopo]`. Quero `[análise/plano/implementação]`. Restrições: `[ambiente, autorização, compatibilidade, dados de teste]`. Valide com `[testes ou evidências esperadas]` e informe limitações e riscos residuais. Não exponha segredos ou dados pessoais.
 
-## Comando para considerar todas as skills
+## Comando único: o agente escolhe as skills
 
-Copie o comando abaixo e substitua os campos entre colchetes. Ele pede ao agente que consulte todas as skills disponíveis, selecione as relevantes e combine suas orientações sem aplicar etapas que não façam sentido para a tarefa.
+Não é preciso conhecer as skills nem os termos técnicos. O jeito mais fácil é o atalho: digite `/tarefa` seguido do que você quer (o atalho fica em [`../commands/tarefa.md`](../commands/tarefa.md)). Sem o atalho, copie o comando abaixo e troque apenas o texto entre colchetes pela sua tarefa, com suas palavras. O agente seleciona as skills relevantes, combina suas orientações, cria e executa os testes e explica o resultado em linguagem simples.
 
-> Considere todas as skills deste repositório antes de trabalhar: `arquitetura-aplicacoes-web`, `codigo-legado-modernizacao`, `documentacao-tecnica`, `eficiencia-computacional`, `entrega-producao-observabilidade`, `escalabilidade-resiliente`, `interface-ux-acessibilidade`, `pesquisa-vulnerabilidades`, `privacidade-dados`, `recursos-ia-generativa`, `resposta-incidentes`, `resposta-vulnerabilidades`, `seguranca-aplicacoes`, `supply-chain-construtor`, `testes-qualidade-web` e `testes-vulnerabilidades`. Minha tarefa é: `[descreva o objetivo e o escopo]`. Identifique quais skills se aplicam e use suas orientações em conjunto; explique brevemente qualquer skill não aplicável, sem forçar etapas irrelevantes. Preserve segurança, privacidade e corretude; não exponha segredos ou dados pessoais. Não faça testes ativos ou mudanças em produção sem autorização explícita. Implemente `[ou: analise/proponha um plano para]` a solução e valide com `[testes/evidências esperadas]`. Informe mudanças, resultados, limitações e riscos residuais.
+```text
+Minha tarefa: [descreva com suas palavras o que você quer]
+
+Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
+```
+
+Exemplo: “Minha tarefa: quero um formulário de contato no site que envie as mensagens para o meu e-mail.”
+
+O comando não lista as skills pelo nome, então continua válido quando novas skills forem adicionadas. Para forçar uma skill específica, use o [modelo de pedido](#modelo-de-pedido) acima.

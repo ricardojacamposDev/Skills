@@ -35,9 +35,12 @@ Clone este repositório e copie as skills para o diretório de configuração do
 
 ```bash
 git clone https://github.com/ricardojacamposDev/Skills.git skills-web
-mkdir -p meu-projeto/.opencode/skills
+mkdir -p meu-projeto/.opencode/skills meu-projeto/.opencode/commands
 cp -R skills-web/.opencode/skills/. meu-projeto/.opencode/skills/
+cp -R skills-web/.opencode/commands/. meu-projeto/.opencode/commands/
 ```
+
+A segunda cópia instala o atalho `/tarefa` (seção 5.2).
 
 Para instalar apenas um subconjunto (menos ruído para o agente):
 
@@ -54,8 +57,9 @@ Instalar por projeto deixa os comandos da bateria executável funcionando com o 
 
 ```bash
 git clone https://github.com/ricardojacamposDev/Skills.git skills-web
-mkdir -p ~/.config/opencode/skills
+mkdir -p ~/.config/opencode/skills ~/.config/opencode/commands
 cp -R skills-web/.opencode/skills/. ~/.config/opencode/skills/
+cp -R skills-web/.opencode/commands/. ~/.config/opencode/commands/
 ```
 
 Atenção: instalada globalmente, a suíte executável fica em `~/.config/opencode/skills/testes-vulnerabilidades/suite/` — ajuste o caminho ao invocar os scripts (o agente localiza a skill, mas o comando documentado assume instalação por projeto). Se usar a bateria com frequência, prefira a instalação por projeto.
@@ -66,7 +70,7 @@ As skills são texto versionado: para atualizar, `git pull` no clone e repetir a
 
 ### 3.4 Verificação e solução de problemas
 
-Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Se alguma não aparecer:
+Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir o atalho, digite `/` e procure `tarefa` na lista. Se alguma skill não aparecer:
 
 1. Confirme que o arquivo se chama exatamente `SKILL.md` (maiúsculas) dentro de `.opencode/skills/<nome>/`.
 2. Confirme o frontmatter com `name` e `description` preenchidos.
@@ -97,11 +101,33 @@ O guia completo — índice por necessidade, seções “escolha pelo objetivo�
 - **Validar segurança antes de release:** `testes-vulnerabilidades` (bateria) → triagem com `seguranca-aplicacoes` → correção com `resposta-vulnerabilidades`.
 - **Feature com IA generativa:** `arquitetura-aplicacoes-web` → `recursos-ia-generativa` + `privacidade-dados` → `testes-qualidade-web`.
 
-### 5.2 Considerar todas as skills de uma vez
+### 5.2 Comando único: o agente escolhe as skills
 
-Copie e adapte em qualquer sessão:
+Você não precisa saber quais skills existem nem o que cada termo técnico significa.
 
-> Considere todas as skills deste repositório antes de trabalhar: `arquitetura-aplicacoes-web`, `codigo-legado-modernizacao`, `documentacao-tecnica`, `eficiencia-computacional`, `entrega-producao-observabilidade`, `escalabilidade-resiliente`, `interface-ux-acessibilidade`, `pesquisa-vulnerabilidades`, `privacidade-dados`, `recursos-ia-generativa`, `resposta-incidentes`, `resposta-vulnerabilidades`, `seguranca-aplicacoes`, `supply-chain-construtor`, `testes-qualidade-web` e `testes-vulnerabilidades`. Minha tarefa é: `[descreva o objetivo e o escopo]`. Identifique quais skills se aplicam e use suas orientações em conjunto; explique brevemente qualquer skill não aplicável, sem forçar etapas irrelevantes.
+**Jeito mais fácil: atalho `/tarefa`.** No opencode, digite `/tarefa` seguido do que você quer, com suas palavras:
+
+```text
+/tarefa quero um formulário de contato no site que envie as mensagens para o meu e-mail
+```
+
+O atalho fica em `.opencode/commands/tarefa.md`, é instalado junto com as skills (seção 3) e envia ao agente o comando completo abaixo. Se você digitar só `/tarefa`, o agente pergunta o que você quer fazer.
+
+**Sem o atalho:** copie o comando abaixo e troque apenas o texto entre colchetes pela sua tarefa:
+
+```text
+Minha tarefa: [descreva com suas palavras o que você quer]
+
+Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
+```
+
+Exemplos de tarefa (valem para o atalho e para o comando):
+
+- “Quero um formulário de contato no site que envie as mensagens para o meu e-mail.”
+- “O login está lento; descubra por quê e corrija.”
+- “Recebi um alerta de segurança sobre uma biblioteca do projeto; veja se me afeta.”
+
+O comando não lista as skills pelo nome: o agente lê a descrição de cada uma e decide quais usar. Por isso ele continua válido quando novas skills forem adicionadas. Se quiser forçar uma skill específica, use o modelo da seção 4.
 
 ### 5.3 Regras de segurança herdadas
 
@@ -158,7 +184,8 @@ Convenções deste repositório (mantenha-as para consistência):
 3. Corpo: título, parágrafo de princípio, seções numeradas (`## 1. ...`) e fechamento com `## Formato de entrega`.
 4. Referências cruzadas apenas para skills existentes; escopo complementar, nunca contraditório com outra skill.
 5. Linguagem baseada em evidência: diferencie confirmado/hipótese/fragilidade/falso positivo; exija autorização para teste ativo; dados sintéticos; sem segredos em exemplos.
-6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md) e atualize o comando da seção 5.2.
+6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). O comando da seção 5.2 não precisa mudar: ele não lista skills pelo nome.
+7. O texto do comando da seção 5.2 existe em três lugares: este README, [`.opencode/skills/README.md`](./.opencode/skills/README.md) e o atalho [`.opencode/commands/tarefa.md`](./.opencode/commands/tarefa.md). Ao alterá-lo, mantenha os três iguais.
 
 ## 9. Limitações
 
