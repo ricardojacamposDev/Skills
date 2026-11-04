@@ -88,4 +88,4 @@ Exija autorização explícita, escopo e critérios de parada para qualquer test
 4. **Testes** — casos positivos/negativos e resultados.
 5. **Riscos residuais e limitações** — áreas não examinadas e suposições.
 
-Para investigar uma CVE ou reproduzir um achado, use `pesquisa-vulnerabilidades`; para conduzir patch e rollout, use `resposta-vulnerabilidades`. Trate requisitos de dados pessoais também com `privacidade-dados`.
+Para investigar uma CVE ou reproduzir um achado, use `pesquisa-vulnerabilidades`; para conduzir patch e rollout, use `resposta-vulnerabilidades`; para bateria executável de testes (estáticos, HTTP e casos dinâmicos), use `testes-vulnerabilidades`. Trate requisitos de dados pessoais também com `privacidade-dados`; para funcionalidades com modelos de linguagem, `recursos-ia-generativa`.

@@ -59,4 +59,4 @@ Reporte falhas preexistentes separadamente. Não declare validação bem-sucedid
 4. **Execução** — comandos, resultado e falhas/limitações.
 5. **Risco residual** — comportamentos ainda não validados.
 
-Para desempenho de páginas, complemente com `eficiencia-computacional`; para revisão específica de segurança, use `seguranca-aplicacoes`.
+Para desempenho de páginas, complemente com `eficiencia-computacional`; para revisão específica de segurança, use `seguranca-aplicacoes`; para bateria executável de testes de segurança, use `testes-vulnerabilidades`; para fixar comportamento de código legado antes de reformá-lo, `codigo-legado-modernizacao`.
