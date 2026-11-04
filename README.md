@@ -34,7 +34,7 @@ O opencode descobre skills em dois níveis: **por projeto** (`.opencode/skills/<
 Clone este repositório e copie as skills para o diretório de configuração do seu projeto:
 
 ```bash
-git clone <url-deste-repositorio> skills-web
+git clone https://github.com/ricardojacamposDev/Skills.git skills-web
 mkdir -p meu-projeto/.opencode/skills
 cp -R skills-web/.opencode/skills/. meu-projeto/.opencode/skills/
 ```
@@ -53,12 +53,12 @@ Instalar por projeto deixa os comandos da bateria executável funcionando com o 
 ### 3.2 Global (todos os projetos)
 
 ```bash
-git clone <url-deste-repositorio> skills-web
+git clone https://github.com/ricardojacamposDev/Skills.git skills-web
 mkdir -p ~/.config/opencode/skills
 cp -R skills-web/.opencode/skills/. ~/.config/opencode/skills/
 ```
 
-Atenção: instalada globalmente, a suíte executável fica em `~/.config/opencode/skills/testes-vulnerabilidades/suite/` — ajuste o caminho ao invocar os scripts (o agente localiza a skill, mas o comando documentado assume instalação por projeto). Se usar a bateria com frequência, prefere a instalação por projeto.
+Atenção: instalada globalmente, a suíte executável fica em `~/.config/opencode/skills/testes-vulnerabilidades/suite/` — ajuste o caminho ao invocar os scripts (o agente localiza a skill, mas o comando documentado assume instalação por projeto). Se usar a bateria com frequência, prefira a instalação por projeto.
 
 ### 3.3 Atualização
 
