@@ -118,7 +118,7 @@ O atalho fica em `.opencode/commands/tarefa.md`, é instalado junto com as skill
 ```text
 Minha tarefa: [descreva com suas palavras o que você quer]
 
-Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
+Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, skills deste projeto que ficaram de fora e por quê (agrupe as que não têm relação com a tarefa), o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
 ```
 
 Exemplos de tarefa (valem para o atalho e para o comando):
