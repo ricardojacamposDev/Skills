@@ -9,6 +9,17 @@ Bateria executável da skill `testes-vulnerabilidades`. Tudo aqui é defensivo: 
 | `verificacao_estatica.py` | Padrões inseguros em código/config (segredos, injeção, XSS, SSRF, crypto, TLS, sessão…) | Somente leitura |
 | `verificacao_http.py` | Headers, cookies, CORS, TLS e vazamento em erros | GET/OPTIONS; exige `--autorizado` |
 | `casos/*.md` | Especificações de testes dinâmicos para implementar no projeto | Ambiente controlado + dados sintéticos |
+| `test_verificacao_estatica.py` | Testes da própria bateria: detecção de injeção de SQL e desempenho em linhas longas | Somente arquivos fictícios em pasta temporária |
+
+## Testes da própria bateria
+
+```bash
+python3 .opencode/skills/testes-vulnerabilidades/suite/test_verificacao_estatica.py
+```
+
+Rode depois de alterar qualquer padrão de `verificacao_estatica.py`. Os casos cobrem SQL montado com f-string, concatenação, `.format`, `%` e template literal (inclusive guardado numa variável antes de chegar ao banco e com aspas internas), formas seguras que não devem ser apontadas (parâmetros, templates com tag como `sql`...``) e um limite de tempo para linhas muito longas.
+
+**Limite conhecido:** a verificação é feita linha a linha. SQL montado numa string de várias linhas (por exemplo, `f"""` com a consulta quebrada em linhas) não é detectado; a revisão manual continua necessária.
 
 ## Uso rápido
 

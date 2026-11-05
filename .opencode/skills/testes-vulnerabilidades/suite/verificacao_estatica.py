@@ -96,6 +96,33 @@ def _validar_nao_fixture(m, linha, caminho):
     posix = str(caminho).replace(os.sep, "/").lower()
     return not re.search(r"(?i)(/test|/tests/|/fixtures?/|/mocks?/|/examples?/|\.test\.|\.spec\.|test_)", posix)
 
+# Padrões de SQL montado em string. O conteúdo de cada literal exclui apenas o
+# seu próprio delimitador, para não parar em aspas internas (WHERE x = '{v}').
+# A distância entre SELECT e FROM é limitada para manter o tempo linear em
+# linhas muito longas (evita que a própria varredura sofra ReDoS).
+def _sql_estrutura(caractere):
+    return (r"(?:SELECT\b" + caractere + r"{0,500}\bFROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|"
+            r"DELETE\s+FROM|DROP\s+TABLE|UNION\s+SELECT)\b")
+
+def _sql_fstring(aspa):
+    caractere = "[^" + aspa + r"\n]"
+    interpolacao = r"(?<!\{)\{(?!\{)"
+    return (aspa + "(?:" + aspa * 2 + ")?"
+            + "(?=" + caractere + "*" + interpolacao + ")"
+            + "(?=" + caractere + "*" + _sql_estrutura(caractere) + ")")
+
+def _sql_literal_montado(aspa):
+    corpo = "[^" + aspa + r"\n]"
+    return (aspa + corpo + r"{0,80}\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|DROP\s+TABLE|"
+            r"UNION\s+SELECT)\b" + corpo + "{0,200}" + aspa)
+
+SQL_FSTRING = r"\b(?:[rR]?[fF]|[fF][rR])(?:" + _sql_fstring('"') + "|" + _sql_fstring("'") + ")"
+SQL_CONCATENACAO = ("(?:" + _sql_literal_montado('"') + "|" + _sql_literal_montado("'") + ")"
+                    r"\s*(?:\+|\.\s*format\s*\(|%[\w(\s])")
+# Template literal com tag (sql`...`, sql<Row>`...`, $queryRaw`...`) é parametrizado pela
+# biblioteca: não é apontado.
+SQL_TEMPLATE = (r"(?<![\w$)\]>])`(?=[^`\n]*\$\{)(?=[^`\n]*" + _sql_estrutura(r"[^`\n]") + ")")
+
 PADROES = [
     dict(id="aws-access-key", categoria="SEGREDO", severidade="alta", confianca="alta",
          titulo="Chave de acesso AWS em texto claro", cwe="CWE-798",
@@ -150,18 +177,17 @@ PADROES = [
 
     dict(id="sql-interpolacao", categoria="INJECAO_SQL", severidade="alta", confianca="media",
          titulo="Consulta SQL montada com interpolação (f-string)", cwe="CWE-89",
-         padrao=r"\b(?:execute|executemany|executescript|raw)\s*\(\s*f[\"'][^\"'\n]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION)\b[^\"'\n]*\{",
+         padrao=SQL_FSTRING,
          extensoes=EXTENSOES_PY,
-         acao="Confirme alcançabilidade a partir de entrada externa e substitua por consulta parametrizada."),
+         acao="Confirme se o valor interpolado vem de entrada externa e se a string chega ao banco (execute, text, raw); substitua por consulta parametrizada."),
     dict(id="sql-template-literal", categoria="INJECAO_SQL", severidade="alta", confianca="media",
          titulo="Consulta SQL com interpolação em template literal", cwe="CWE-89",
-         padrao=r"\b(?:query|execute|raw|all|get)\s*\(\s*`[^`\n]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION)\b[^`\n]*\$\{",
+         padrao=SQL_TEMPLATE,
          extensoes=EXTENSOES_WEB,
-         acao="Confirme a origem dos valores interpolados e migre para placeholders/parametrização do driver."),
+         acao="Confirme a origem dos valores interpolados e se a string chega ao banco; migre para placeholders/parametrização do driver."),
     dict(id="sql-concatenacao", categoria="INJECAO_SQL", severidade="media", confianca="media",
          titulo="Consulta SQL montada por concatenação ou formatação", cwe="CWE-89",
-         padrao=(r"[\"'][^\"'\n]{0,80}\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|DROP\s+TABLE|"
-                 r"UNION\s+SELECT)\b[^\"'\n]{0,200}[\"']\s*(?:\+|\.\s*format\s*\(|%[\w(\s])"),
+         padrao=SQL_CONCATENACAO,
          extensoes=None,
          acao="Verifique se os fragmentos concatenados derivam de entrada externa; prefira sempre consultas parametrizadas."),
     dict(id="orm-raw-interp", categoria="INJECAO_SQL", severidade="media", confianca="baixa",

@@ -152,7 +152,7 @@ O atalho fica em `.opencode/commands/revisao-final.md`. **Sem o atalho:** copie 
 ```text
 Faça uma revisão final deste projeto antes da entrega. Contexto adicional (pode estar vazio): [opcional: o que você quiser acrescentar]
 
-Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
+Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills deste projeto usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
 ```
 
 Deixar a verificação só para o final encontra os problemas, mas alguns custam mais para corrigir tarde; por exemplo, mudar o jeito de guardar dados pessoais pode exigir refazer parte do código. Um meio-termo: use `/tarefa` nas partes mais sensíveis (login, pagamentos, dados pessoais) e `/revisao-final` antes de entregar.
@@ -182,6 +182,7 @@ python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_http.py \
 - **HTTP:** apenas GET/OPTIONS não destrutivos; recusa alvo sem `--autorizado`, recusa host não local sem `--forcar-externo`, interrompe em 5xx.
 - **Casos dinâmicos:** 9 especificações em `suite/casos/` (IDOR/tenants, sessão, injeção, XSS, SSRF, upload/desserialização, concorrência, exposição em erros/logs, ReDoS) para implementar no framework de testes do projeto.
 - **CI:** código de saída 1 a partir de `--falhar-em alta|media|baixa` (padrão `alta`); falsos positivos revisados via `--permitir`.
+- **Testes da bateria:** `python3 .opencode/skills/testes-vulnerabilidades/suite/test_verificacao_estatica.py` confere a detecção de injeção de SQL e o desempenho; rode após alterar padrões. A verificação é linha a linha: SQL em string de várias linhas não é detectado.
 
 Detalhes de uso, allowlist e integração: [`suite/README.md`](./.opencode/skills/testes-vulnerabilidades/suite/README.md).
 
