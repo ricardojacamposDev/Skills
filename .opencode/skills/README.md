@@ -156,3 +156,17 @@ Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orient
 Exemplo: “Minha tarefa: quero um formulário de contato no site que envie as mensagens para o meu e-mail.”
 
 O comando não lista as skills pelo nome, então continua válido quando novas skills forem adicionadas. Para forçar uma skill específica, use o [modelo de pedido](#modelo-de-pedido) acima.
+
+Use o `/tarefa` uma vez por tarefa, no início do pedido; as mensagens seguintes da mesma conversa e perguntas simples não precisam dele.
+
+## Revisão final do projeto
+
+Para verificar tudo no fim do projeto ou antes de uma entrega, digite `/revisao-final` (o atalho fica em [`../commands/revisao-final.md`](../commands/revisao-final.md)); se quiser, acrescente contexto depois dele. Ao contrário do `/tarefa`, ele não altera arquivos: analisa o projeto, roda os testes existentes e a varredura de segurança, lista os problemas por prioridade e só então pergunta o que corrigir. Sem o atalho, copie o comando abaixo (o texto entre colchetes é opcional):
+
+```text
+Faça uma revisão final deste projeto antes da entrega. Contexto adicional (pode estar vazio): [opcional: o que você quiser acrescentar]
+
+Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
+```
+
+Deixar a verificação só para o final encontra os problemas, mas alguns custam mais para corrigir tarde. Um meio-termo: use `/tarefa` nas partes mais sensíveis (login, pagamentos, dados pessoais) e `/revisao-final` antes de entregar.

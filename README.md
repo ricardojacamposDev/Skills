@@ -40,7 +40,7 @@ cp -R skills-web/.opencode/skills/. meu-projeto/.opencode/skills/
 cp -R skills-web/.opencode/commands/. meu-projeto/.opencode/commands/
 ```
 
-A segunda cópia instala o atalho `/tarefa` (seção 5.2).
+A segunda cópia instala os atalhos `/tarefa` e `/revisao-final` (seções 5.2 e 5.3).
 
 Para instalar apenas um subconjunto (menos ruído para o agente):
 
@@ -70,7 +70,7 @@ As skills são texto versionado: para atualizar, `git pull` no clone e repetir a
 
 ### 3.4 Verificação e solução de problemas
 
-Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir o atalho, digite `/` e procure `tarefa` na lista. Se alguma skill não aparecer:
+Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir os atalhos, digite `/` e procure `tarefa` e `revisao-final` na lista. Se alguma skill não aparecer:
 
 1. Confirme que o arquivo se chama exatamente `SKILL.md` (maiúsculas) dentro de `.opencode/skills/<nome>/` (ou de `~/.config/opencode/skills/<nome>/`, na instalação global).
 2. Confirme o frontmatter com `name` e `description` preenchidos.
@@ -131,7 +131,33 @@ Exemplos de tarefa (valem para o atalho e para o comando):
 
 O comando não lista as skills pelo nome: o agente lê a descrição de cada uma e decide quais usar. Por isso ele continua válido quando novas skills forem adicionadas. Se quiser forçar uma skill específica, use o modelo da seção 4.
 
-### 5.3 Regras de segurança herdadas
+**Quando usar:** uma vez por tarefa, no início do pedido. As mensagens seguintes da mesma conversa (“agora mude a cor do botão”) não precisam do atalho, porque o agente continua seguindo as instruções. Perguntas simples (“o que faz este arquivo?”) também não precisam.
+
+### 5.3 Revisão final do projeto: atalho `/revisao-final`
+
+Use no fim de um projeto ou antes de uma entrega, para verificar tudo de uma vez. Ao contrário do `/tarefa`, ele **não altera arquivos**: analisa o projeto inteiro, roda os testes existentes e a varredura de segurança e lista os problemas por prioridade (impede a entrega, importante, pode esperar). Só depois pergunta o que você quer corrigir, e cada correção vem com testes.
+
+```text
+/revisao-final
+```
+
+Se quiser, acrescente contexto depois do atalho:
+
+```text
+/revisao-final é uma loja virtual; vou publicar na semana que vem
+```
+
+O atalho fica em `.opencode/commands/revisao-final.md`. **Sem o atalho:** copie o comando abaixo (o texto entre colchetes é opcional):
+
+```text
+Faça uma revisão final deste projeto antes da entrega. Contexto adicional (pode estar vazio): [opcional: o que você quiser acrescentar]
+
+Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
+```
+
+Deixar a verificação só para o final encontra os problemas, mas alguns custam mais para corrigir tarde; por exemplo, mudar o jeito de guardar dados pessoais pode exigir refazer parte do código. Um meio-termo: use `/tarefa` nas partes mais sensíveis (login, pagamentos, dados pessoais) e `/revisao-final` antes de entregar.
+
+### 5.4 Regras de segurança herdadas
 
 Todas as skills compartilham limites que devem ser respeitados nos pedidos:
 
@@ -186,8 +212,8 @@ Convenções deste repositório (mantenha-as para consistência):
 3. Corpo: título, parágrafo de princípio, seções numeradas (`## 1. ...`) e fechamento com `## Formato de entrega`.
 4. Referências cruzadas apenas para skills existentes; escopo complementar, nunca contraditório com outra skill.
 5. Linguagem baseada em evidência: diferencie confirmado/hipótese/fragilidade/falso positivo; exija autorização para teste ativo; dados sintéticos; sem segredos em exemplos.
-6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). O comando da seção 5.2 não precisa mudar: ele não lista skills pelo nome.
-7. O texto do comando da seção 5.2 existe em três lugares: este README, [`.opencode/skills/README.md`](./.opencode/skills/README.md) e o atalho [`.opencode/commands/tarefa.md`](./.opencode/commands/tarefa.md). Ao alterá-lo, mantenha os três iguais.
+6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). Os comandos das seções 5.2 e 5.3 não precisam mudar: eles não listam skills pelo nome.
+7. O texto de cada comando existe em três lugares: este README (seções 5.2 e 5.3), [`.opencode/skills/README.md`](./.opencode/skills/README.md) e o arquivo do atalho ([`tarefa.md`](./.opencode/commands/tarefa.md) ou [`revisao-final.md`](./.opencode/commands/revisao-final.md), em `.opencode/commands/`). Ao alterar um comando, mantenha os três iguais e repita a cópia para a instalação global, se usar uma (seção 3.3).
 
 ## 9. Limitações
 
