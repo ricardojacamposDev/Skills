@@ -72,10 +72,12 @@ As skills são texto versionado: para atualizar, `git pull` no clone e repetir a
 
 Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir o atalho, digite `/` e procure `tarefa` na lista. Se alguma skill não aparecer:
 
-1. Confirme que o arquivo se chama exatamente `SKILL.md` (maiúsculas) dentro de `.opencode/skills/<nome>/`.
+1. Confirme que o arquivo se chama exatamente `SKILL.md` (maiúsculas) dentro de `.opencode/skills/<nome>/` (ou de `~/.config/opencode/skills/<nome>/`, na instalação global).
 2. Confirme o frontmatter com `name` e `description` preenchidos.
 3. Confirme que `name` é igual ao nome do diretório, em minúsculas, com hífens simples (`^[a-z0-9]+(-[a-z0-9]+)*$`, 1–64 caracteres).
-4. Verifique se há permissões bloqueando (seção 7) e nomes duplicados entre local e global.
+4. Verifique se há permissões bloqueando (seção 7).
+
+**Skill instalada no projeto e na global ao mesmo tempo.** A skill não some nem aparece duas vezes: o opencode carrega uma só cópia, sem garantia de qual (em teste, parte das skills veio do projeto e parte da instalação global). Enquanto as cópias forem iguais, não há problema. O risco é usar uma versão desatualizada: depois de editar ou atualizar uma skill, repita a cópia para o outro local (seção 3.3). Para ver qual cópia está em uso, rode `opencode debug skill` e confira o campo `location` de cada skill.
 
 ## 4. Como as skills funcionam
 
