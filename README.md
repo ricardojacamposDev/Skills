@@ -1,6 +1,6 @@
 # Skills — Manual de instalação e utilização
 
-Coleção de **16 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de testes de segurança.
+Coleção de **17 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de testes de segurança.
 
 ## 1. Visão geral
 
@@ -13,7 +13,7 @@ As skills se dividem em duas naturezas:
 |---|---|
 | Segurança | `seguranca-aplicacoes`, `pesquisa-vulnerabilidades`, `resposta-vulnerabilidades`, `testes-vulnerabilidades` |
 | Privacidade e IA | `privacidade-dados`, `recursos-ia-generativa` |
-| Qualidade e interface | `testes-qualidade-web`, `interface-ux-acessibilidade` |
+| Qualidade e interface | `testes-qualidade-web`, `testes-e2e`, `interface-ux-acessibilidade` |
 | Arquitetura e evolução | `arquitetura-aplicacoes-web`, `codigo-legado-modernizacao`, `documentacao-tecnica` |
 | Operação | `entrega-producao-observabilidade`, `escalabilidade-resiliente`, `eficiencia-computacional`, `resposta-incidentes`, `supply-chain-construtor` |
 

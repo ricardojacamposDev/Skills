@@ -31,6 +31,7 @@ O nome da skill também pode ser combinado com uma tarefa concreta. Em vez de pe
 | Reformar código legado com segurança | [`codigo-legado-modernizacao`](./codigo-legado-modernizacao/SKILL.md) | A tarefa mexe em código antigo ou sem testes, ou migra módulo/sistema em produção de forma gradual. |
 | Construir ou melhorar uma interface acessível | [`interface-ux-acessibilidade`](./interface-ux-acessibilidade/SKILL.md) | A tarefa altera fluxos, componentes, responsividade ou acessibilidade da UI. |
 | Criar ou validar testes web | [`testes-qualidade-web`](./testes-qualidade-web/SKILL.md) | É necessário testar fluxos, contratos, regressões, acessibilidade ou comportamento visual. |
+| Testar fluxos completos no navegador | [`testes-e2e`](./testes-e2e/SKILL.md) | É necessário validar jornadas de usuário ponta a ponta em navegador real, estabilizar suíte E2E ou configurar execução em CI. |
 | Preparar release e observabilidade | [`entrega-producao-observabilidade`](./entrega-producao-observabilidade/SKILL.md) | A tarefa envolve CI/CD, deploy, migrações, métricas, alertas ou rollback. |
 
 ## Escolha pelo objetivo
@@ -104,6 +105,7 @@ Não afrouxe validação, autenticação, autorização, limites ou auditoria pa
 - Use `codigo-legado-modernizacao` para reformar módulos antigos: testes de caracterização antes, passos pequenos e strangler fig — nunca reescrita total de uma vez.
 - Use `interface-ux-acessibilidade` para fluxos e componentes de interface; complemente com `testes-qualidade-web` para automatizar os fluxos relevantes.
 - Use `testes-qualidade-web` para selecionar a camada de teste adequada e evitar regressões. Testes de segurança devem incluir casos negativos, como acesso negado e isolamento entre usuários/tenants.
+- Use `testes-e2e` para validar jornadas completas em navegador real, com ambiente reproduzível, dados sintéticos e evidências de falha; mantenha a suíte pequena e focada em fluxos críticos.
 
 ### Produção e operação
 
@@ -121,6 +123,7 @@ Quando algo já quebrou, use `resposta-incidentes` para comandar o evento: papé
 | Otimizar um endpoint | `eficiencia-computacional` → `seguranca-aplicacoes` quando houver mudanças em controles ou dados → `testes-qualidade-web` |
 | Preparar serviço para aumento de tráfego | `escalabilidade-resiliente` → `eficiencia-computacional` para o caminho quente → `entrega-producao-observabilidade` |
 | Melhorar um fluxo de interface | `interface-ux-acessibilidade` → `testes-qualidade-web` |
+| Validar jornada crítica de usuário | `testes-e2e` → `testes-qualidade-web` (casos de menor camada) → `seguranca-aplicacoes` (casos negativos) |
 | Construir feature com IA generativa | `arquitetura-aplicacoes-web` → `recursos-ia-generativa` + `privacidade-dados` → `testes-qualidade-web` (avaliações) → `entrega-producao-observabilidade` |
 | Responder a incidente | `resposta-incidentes` → `resposta-vulnerabilidades` (finding de segurança) → `entrega-producao-observabilidade` (recuperação e alertas) |
 | Modernizar módulo legado | `codigo-legado-modernizacao` → `testes-qualidade-web` (caracterização) → `documentacao-tecnica` (ADRs) → `entrega-producao-observabilidade` |
