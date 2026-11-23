@@ -26,7 +26,7 @@ Complemente conforme o escopo:
 - **Arquivos de configuração e de credencial:** `.env*`, chaves `.pem/.key/.p12`, `credentials.json`, `.npmrc`, `.pypirc`, `kubeconfig`, `terraform.tfstate` (guarda segredos em texto claro).
 - **Imagens e artefatos:** `ENV`/`ARG` em Dockerfile, camadas da imagem, bundles de frontend (todo segredo enviado ao navegador é público).
 - **Pipelines:** variáveis impressas em logs de CI, `set -x`, artefatos publicados, caches.
-- **Ferramentas dedicadas**, quando instaladas e autorizadas (ex.: gitleaks, trufflehog em modo sem verificação online): use como evidência complementar.
+- **Ferramentas dedicadas**, quando instaladas e autorizadas (ex.: gitleaks, trufflehog em modo sem verificação online): use como evidência complementar (`varredura.py --externas` já integra o gitleaks, sem copiar valores).
 
 Trate cada ocorrência como candidata: diferencie valor real, valor sintético de teste, placeholder e chave pública. Registre falso positivo com justificativa em `--permitir`.
 

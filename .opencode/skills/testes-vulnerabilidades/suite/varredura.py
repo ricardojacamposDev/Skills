@@ -5,7 +5,9 @@
     1. estática     — sempre (somente leitura); com --historico-git inclui segredos no histórico;
     2. dependências — inventário sempre; consulta ao OSV só com --osv (envia nome/versão
                       das dependências à API pública do OSV);
-    3. HTTP         — só com --url e --autorizado (ambiente local/staging).
+    3. HTTP         — só com --url e --autorizado (ambiente local/staging);
+    4. externas     — só com --externas: gitleaks, semgrep e trivy, quando instaladas (opcional;
+                      sem rede por padrão, valores de segredo nunca copiados).
 
   Gera <saida>/varredura.json e <saida>/varredura.md com achados normalizados,
   matriz de cobertura OWASP Top 10 e a lista do que a varredura automática NÃO cobre.
@@ -21,6 +23,8 @@ import sys
 from pathlib import Path
 
 PASTA = Path(__file__).resolve().parent
+sys.path.insert(0, str(PASTA))
+import verificacao_externas  # noqa: E402
 SEVERIDADES = {"baixa": 0, "media": 1, "alta": 2}
 
 OWASP = [
@@ -136,6 +140,11 @@ def principal(argv=None):
     parser.add_argument("--autorizado", action="store_true", help="declara autorização para a camada HTTP")
     parser.add_argument("--espera-http", type=float, default=0.5, help="segundos entre requisições HTTP (padrão: 0.5)")
     parser.add_argument("--forcar-externo", action="store_true", help="repassa ao verificador HTTP (alvo não local)")
+    parser.add_argument("--externas", action="store_true",
+                        help="roda gitleaks, semgrep e trivy quando instalados (opcional; sem rede por padrão)")
+    parser.add_argument("--externas-rede", action="store_true",
+                        help="permite que trivy atualize a base e semgrep baixe regras (não envia o código)")
+    parser.add_argument("--semgrep-config", help="regras do semgrep (pasta/arquivo local ou conjunto do registro)")
     parser.add_argument("--permitir", help="arquivo de exceções revisadas da camada estática")
     parser.add_argument("--falhar-em", choices=["alta", "media", "baixa", "qualquer", "nunca"], default="alta")
     args = parser.parse_args(argv)
@@ -229,6 +238,21 @@ def principal(argv=None):
             erro_camada = True
             mensagem = (erro or saida_http).strip().splitlines()
             camadas["HTTP"] = dict(situacao="erro/recusa", detalhe=(mensagem[0] if mensagem else "")[:200])
+
+    # 4. Ferramentas externas (opcionais)
+    if args.externas:
+        for nome in verificacao_externas.FERRAMENTAS:
+            situacao, detalhe, encontrados = verificacao_externas.executar(
+                nome, args.alvo, rede=args.externas_rede, semgrep_config=args.semgrep_config,
+                historico=args.historico_git)
+            rotulo = f"externa: {nome}"
+            camadas[rotulo] = dict(situacao=situacao, detalhe=detalhe)
+            if situacao == "erro":
+                erro_camada = True
+            achados += [normalizar(rotulo, a) for a in encontrados]
+    else:
+        camadas["externas"] = dict(situacao="não executada",
+                                   detalhe="opcional: use --externas para gitleaks/semgrep/trivy, se instalados")
 
     achados.sort(key=lambda a: (-SEVERIDADES.get(a["severidade"], 0), -SEVERIDADES.get(a["confianca"], 0),
                                 a["camada"], a["local"]))

@@ -74,6 +74,7 @@ O jeito mais simples é o atalho `/varredura-seguranca` (seção [Varredura de s
 | Segredos no histórico | Chaves apagadas que seguem no git | `--historico-git` |
 | Dependências | Inventário de lockfiles/SBOM; vulnerabilidades conhecidas | `--osv` (envia nome/versão ao OSV) |
 | HTTP | Cabeçalhos, CSP, cookies, CORS, TLS, arquivos expostos, redirect aberto | `--url` local/staging + `--autorizado` |
+| Ferramentas externas (opcional) | gitleaks, semgrep e trivy, se instalados; complementam as camadas acima | `--externas` (sem rede por padrão; `--externas-rede` para base/regras) |
 | Casos dinâmicos | Autorização entre tenants, lógica de negócio, injeções, XXE/SSTI, prompt injection | Implementar na suíte do projeto |
 
 Depois da varredura, encaminhe: segredos → `gestao-segredos`; IaC, contêineres e nuvem → `seguranca-infraestrutura`; dependências → `pesquisa-vulnerabilidades` e `resposta-vulnerabilidades`; código → `seguranca-aplicacoes`.

@@ -10,6 +10,7 @@ Bateria executável da skill `testes-vulnerabilidades`. Tudo aqui é defensivo: 
 | `verificacao_estatica.py` | ~115 padrões em código/config: segredos, injeção (SQL, comando, NoSQL, LDAP, SSTI), XSS, SSRF, redirect aberto, crypto, TLS, sessão/CSRF, JWT, XXE, desserialização, IaC/Kubernetes/Dockerfile, CI/CD (GitHub Actions), arquivos de credencial; `--historico-git` procura segredos no histórico | Somente leitura (o histórico é lido com `git log`) |
 | `verificacao_dependencias.py` | Inventário de lockfiles/SBOM e, com `--osv`, vulnerabilidades conhecidas por pacote/versão | Inventário: local. `--osv`: envia nome/ecossistema/versão à API pública do OSV |
 | `verificacao_http.py` | Headers e qualidade da CSP, cookies, CORS, TLS, HTTP→HTTPS, arquivos/endpoints expostos, redirect aberto, vazamento em erros | GET/OPTIONS; exige `--autorizado` |
+| `verificacao_externas.py` | Camada opcional (`--externas` no orquestrador): gitleaks, semgrep e trivy, se instalados, com achados no mesmo formato. Sem rede por padrão; nunca copia valor de segredo; roda com diretório de trabalho neutro | Local por padrão. `--externas-rede`: trivy atualiza a base e semgrep pode baixar regras (o código não é enviado) |
 | `casos/*.md` | Especificações de testes dinâmicos para implementar no projeto | Ambiente controlado + dados sintéticos |
 | `test_*.py` | Testes da própria bateria | Arquivos fictícios em pasta temporária e servidores sintéticos em 127.0.0.1; sem rede externa |
 
@@ -20,6 +21,7 @@ cd .opencode/skills/testes-vulnerabilidades/suite
 python3 test_verificacao_estatica.py      # padrões, credenciais, CI/CD, histórico git, desempenho
 python3 test_verificacao_dependencias.py  # parseadores, CVSS, OSV com rede simulada
 python3 test_verificacao_http.py          # servidores sintéticos vulnerável e endurecido, recusas
+python3 test_verificacao_externas.py       # camada de ferramentas externas, com executáveis falsos
 python3 test_varredura.py                 # relatório consolidado e regras de autorização
 ```
 
@@ -60,6 +62,10 @@ src/legado/x.py:42
 python3 suite/verificacao_dependencias.py .
 python3 suite/verificacao_dependencias.py . --osv --cache .cache-osv.json --json dependencias.json
 
+# 6) Ferramentas externas (opcionais, se instaladas): gitleaks, semgrep, trivy
+python3 suite/varredura.py . --historico-git --externas --semgrep-config regras/
+#    --externas-rede só se aceitar que trivy atualize a base e semgrep baixe regras
+
 # 5) HTTP — apenas ambiente local/staging autorizado
 python3 suite/verificacao_http.py --url http://localhost:3000 --autorizado --json http.json
 ```
@@ -75,7 +81,7 @@ O verificador HTTP recusa alvos sem `--autorizado`, recusa hosts fora de loopbac
 - `verificacao_estatica.py`: `0` sem achados no nível; `1` quando há achado a partir de `--falhar-em` (padrão `alta`; opções: `media`, `baixa`, `qualquer`, `nunca`); `2` erro de uso.
 - `verificacao_dependencias.py`: como a estática, mas só falha com `--osv` (inventário não gera achados); `2` falha na consulta.
 - `verificacao_http.py`: `0` sem achados altos; `1` com achado alto; `2` falha de conexão.
-- `varredura.py`: `0`/`1` conforme `--falhar-em` sobre todas as camadas executadas; `2` se alguma camada falhou ou foi recusada.
+- `varredura.py`: `0`/`1` conforme `--falhar-em` sobre todas as camadas executadas; `2` se alguma camada falhou ou foi recusada. Ferramenta externa não instalada não é falha; erro durante a execução dela é.
 
 Exemplo em CI (quebra com achados altos):
 

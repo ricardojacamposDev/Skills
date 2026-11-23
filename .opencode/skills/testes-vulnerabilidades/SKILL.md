@@ -14,6 +14,7 @@ Bateria padronizada para transformar hipóteses de segurança em evidência obse
 | Estática (`suite/verificacao_estatica.py`) | Lê arquivos do repositório e procura padrões inseguros: segredos, injeção, XSS, SSRF, criptografia, sessão, IaC, contêineres, CI/CD; com `--historico-git`, segredos já apagados que seguem no histórico | Nenhum; serve para qualquer código |
 | Dependências (`suite/verificacao_dependencias.py`) | Inventaria lockfiles/SBOM (npm, PyPI, Go, RubyGems, Packagist, crates.io, Maven/Gradle, NuGet); com `--osv`, consulta vulnerabilidades conhecidas | Inventário: nenhum. `--osv` envia nome/ecossistema/versão das dependências à API pública do OSV — avise o usuário e peça confirmação sempre, não só em projeto privado (os nomes de pacotes internos também revelam a stack) |
 | HTTP (`suite/verificacao_http.py`) | Requisições GET/OPTIONS não destrutivas; headers e qualidade da CSP, cookies, CORS, TLS, HTTP→HTTPS, arquivos/endpoints expostos, redirect aberto, vazamento em erros | `--url` de ambiente local/staging **e** flag `--autorizado`; host fora de loopback/rede privada (ex.: staging público) é recusado sem `--forcar-externo`, que só se usa com autorização formal do dono do ambiente. Redirects só são seguidos dentro da origem informada |
+| Ferramentas externas (`suite/verificacao_externas.py`, opcional) | Roda gitleaks, semgrep e trivy quando instalados e normaliza os achados no mesmo relatório | `--externas`. Sem rede por padrão: trivy usa a base já baixada e semgrep exige `--semgrep-config`; `--externas-rede` permite atualizar base/baixar regras (o código não é enviado). Valores de segredo nunca são copiados |
 | Casos dinâmicos (`suite/casos/`) | Especificações de teste para implementar na suíte do próprio projeto | Ambiente controlado, contas e dados sintéticos |
 | Orquestrador (`suite/varredura.py`) | Roda as camadas permitidas e gera `varredura.md`/`varredura.json` com achados normalizados, matriz OWASP Top 10 e lista do que não foi coberto | Os mesmos de cada camada |
 
@@ -25,7 +26,7 @@ Caminho recomendado — varredura completa com relatório consolidado:
 
 `python3 .opencode/skills/testes-vulnerabilidades/suite/varredura.py <caminho> --historico-git [--osv] [--url http://localhost:PORTA --autorizado]`
 
-Os relatórios ficam em `relatorio-seguranca/` (com `.gitignore` próprio, pois citam código e locais de segredos). Inclua `--osv` e `--url/--autorizado` somente com as permissões da tabela acima. Para rodar camadas isoladas:
+Para reforçar a cobertura com ferramentas dedicadas já instaladas, acrescente `--externas` (ex.: `--externas --semgrep-config regras/`): elas complementam a bateria, não a substituem, e um segredo apontado por duas camadas conta como um só problema. Os relatórios ficam em `relatorio-seguranca/` (com `.gitignore` próprio, pois citam código e locais de segredos). Inclua `--osv` e `--url/--autorizado` somente com as permissões da tabela acima. Para rodar camadas isoladas:
 
 1. **Estático:**
    `python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_estatica.py <caminho> --historico-git --json relatorio.json`
@@ -57,7 +58,7 @@ Segredos detectados: informe apenas localização e tipo, recomende rotação pe
 - Adicione regressão que falhe na versão vulnerável e passe na corrigida, quando seguro e viável.
 - Rerode a bateria e os testes do projeto; ausência de achados da bateria não equivale a sistema seguro — informe o que ela não cobre.
 - Em CI, use `--falhar-em` e `--json` para quebrar o build conforme a política do projeto, sem tratar falso positivo como incidente.
-- Ao alterar a bateria, rode os testes dela: `test_verificacao_estatica.py`, `test_verificacao_dependencias.py`, `test_verificacao_http.py` e `test_varredura.py` (nenhum acessa a rede externa).
+- Ao alterar a bateria, rode os testes dela: `test_verificacao_estatica.py`, `test_verificacao_dependencias.py`, `test_verificacao_http.py`, `test_verificacao_externas.py` e `test_varredura.py` (nenhum acessa a rede externa).
 
 ## Formato de entrega
 
