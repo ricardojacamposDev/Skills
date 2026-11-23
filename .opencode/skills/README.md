@@ -19,7 +19,9 @@ O nome da skill também pode ser combinado com uma tarefa concreta. Em vez de pe
 | Analisar controles de segurança ou modelar ameaças | [`seguranca-aplicacoes`](./seguranca-aplicacoes/SKILL.md) | A tarefa envolve autenticação, autorização, entradas, segredos, integrações ou revisão de código segura. |
 | Pesquisar ou validar uma vulnerabilidade | [`pesquisa-vulnerabilidades`](./pesquisa-vulnerabilidades/SKILL.md) | É preciso investigar uma CVE, advisory, finding ou possível caminho vulnerável. |
 | Corrigir ou responder a um alerta de vulnerabilidade | [`resposta-vulnerabilidades`](./resposta-vulnerabilidades/SKILL.md) | É preciso priorizar, conter, corrigir e comprovar a correção de um finding. |
-| Executar testes de vulnerabilidade | [`testes-vulnerabilidades`](./testes-vulnerabilidades/SKILL.md) | É pedido teste de vulnerabilidades, scan de segurança, checagem de headers/cookies ou validação de segurança antes de release. |
+| Varrer o sistema em busca de vulnerabilidades | [`testes-vulnerabilidades`](./testes-vulnerabilidades/SKILL.md) | É pedida varredura/scan de segurança (código, segredos, dependências, IaC, CI/CD, HTTP), checagem de headers/cookies ou validação de segurança antes de release. |
+| Encontrar e tratar segredos expostos | [`gestao-segredos`](./gestao-segredos/SKILL.md) | Há chave/senha no código ou no histórico, credencial vazada, ou é preciso definir cofre, variáveis de ambiente e prevenção. |
+| Revisar infraestrutura, nuvem e contêineres | [`seguranca-infraestrutura`](./seguranca-infraestrutura/SKILL.md) | A tarefa envolve Terraform/IaC, Docker, Kubernetes, IAM, rede exposta, buckets, TLS ou servidores web. |
 | Comandar resposta a incidente ou postmortem | [`resposta-incidentes`](./resposta-incidentes/SKILL.md) | Há interrupção, vazamento ou suspeita de comprometimento em andamento, ou preparo de playbook, escalonamento e postmortem. |
 | Prevenir riscos na cadeia de suprimentos | [`supply-chain-construtor`](./supply-chain-construtor/SKILL.md) | A tarefa envolve adicionar/atualizar dependências, pipeline de build, publicação/consumo de artefatos, pinning, SBOM ou proveniência. |
 | Tratar dados pessoais e prevenir exposição | [`privacidade-dados`](./privacidade-dados/SKILL.md) | A tarefa coleta, armazena, compartilha, registra ou exclui dados pessoais. |
@@ -49,7 +51,7 @@ Exemplos:
 
 Escolha `pesquisa-vulnerabilidades` para determinar se um alerta é aplicável e alcançável; use `resposta-vulnerabilidades` para priorizar e executar a correção. Combine-as quando o finding ainda não foi confirmado:
 
-Para produzir evidência executável, use `testes-vulnerabilidades`: a bateria estática serve para qualquer repositório; as checagens HTTP e os casos dinâmicos exigem ambiente controlado, autorização e dados sintéticos. Um resultado da bateria é sempre um candidato a achado, a confirmar com `seguranca-aplicacoes`.
+Para produzir evidência executável, use `testes-vulnerabilidades`: a bateria estática e o inventário de dependências servem para qualquer repositório; a consulta ao OSV envia nome/versão das dependências a um serviço público; as checagens HTTP e os casos dinâmicos exigem ambiente controlado, autorização e dados sintéticos. Um resultado da bateria é sempre um candidato a achado, a confirmar com `seguranca-aplicacoes`.
 
 1. Pesquise versões afetadas, artefatos e evidências.
 2. Corrija ou mitigue a causa raiz, sem atualizações indiscriminadas.
@@ -61,6 +63,25 @@ Exemplos:
 - “Use `pesquisa-vulnerabilidades` para avaliar se esta CVE afeta a versão registrada no lockfile. Faça apenas análise passiva.”
 - “Use `resposta-vulnerabilidades` para corrigir o alerta e comprovar a correção com testes.”
 - “Use `testes-vulnerabilidades` para rodar a bateria estática no repositório e checagens HTTP no ambiente de staging; triar os achados e implementar os casos dinâmicos aplicáveis.”
+
+### Varredura de vulnerabilidades do sistema
+
+O jeito mais simples é o atalho `/varredura-seguranca` (seção [Varredura de segurança](#varredura-de-segurança)). Por baixo, `testes-vulnerabilidades` executa `suite/varredura.py`, que roda as camadas permitidas e gera um relatório único com matriz OWASP Top 10 e a lista do que a automação não cobre:
+
+| Camada | Cobre | Precisa de |
+|---|---|---|
+| Estática | Código, configuração, IaC, Dockerfile, Kubernetes, CI/CD, arquivos de credencial | Nada |
+| Segredos no histórico | Chaves apagadas que seguem no git | `--historico-git` |
+| Dependências | Inventário de lockfiles/SBOM; vulnerabilidades conhecidas | `--osv` (envia nome/versão ao OSV) |
+| HTTP | Cabeçalhos, CSP, cookies, CORS, TLS, arquivos expostos, redirect aberto | `--url` local/staging + `--autorizado` |
+| Casos dinâmicos | Autorização entre tenants, lógica de negócio, injeções, XXE/SSTI, prompt injection | Implementar na suíte do projeto |
+
+Depois da varredura, encaminhe: segredos → `gestao-segredos`; IaC, contêineres e nuvem → `seguranca-infraestrutura`; dependências → `pesquisa-vulnerabilidades` e `resposta-vulnerabilidades`; código → `seguranca-aplicacoes`.
+
+Exemplos:
+
+- “Use `gestao-segredos` para varrer o repositório e o histórico, e me diga o que precisa ser rotacionado, sem mostrar os valores.”
+- “Use `seguranca-infraestrutura` para revisar os módulos Terraform e os manifests do Kubernetes; proponha correções como diff.”
 
 ### Privacidade e proteção contra vazamentos
 
@@ -128,6 +149,9 @@ Quando algo já quebrou, use `resposta-incidentes` para comandar o evento: papé
 | Responder a incidente | `resposta-incidentes` → `resposta-vulnerabilidades` (finding de segurança) → `entrega-producao-observabilidade` (recuperação e alertas) |
 | Modernizar módulo legado | `codigo-legado-modernizacao` → `testes-qualidade-web` (caracterização) → `documentacao-tecnica` (ADRs) → `entrega-producao-observabilidade` |
 | Endurecer pipeline e dependências | `supply-chain-construtor` → `testes-vulnerabilidades` (bateria) → `resposta-vulnerabilidades` (quando houver alerta) |
+| Varredura completa do sistema | `testes-vulnerabilidades` (varredura.py) → `gestao-segredos` / `seguranca-infraestrutura` / `seguranca-aplicacoes` (triagem por tipo) → `resposta-vulnerabilidades` |
+| Credencial vazada | `gestao-segredos` (contenção e rotação) → `resposta-incidentes` (se houver uso indevido) → `testes-vulnerabilidades` (confirmar varredura limpa) |
+| Revisar infraestrutura antes do deploy | `seguranca-infraestrutura` → `supply-chain-construtor` (imagens) → `entrega-producao-observabilidade` |
 
 As combinações são sugestões, não uma sequência obrigatória. Se a tarefa for pequena, use apenas a skill necessária.
 
@@ -148,13 +172,9 @@ Adapte este formato ao trabalho:
 
 ## Comando único: o agente escolhe as skills
 
-Não é preciso conhecer as skills nem os termos técnicos. O jeito mais fácil é o atalho: digite `/tarefa` seguido do que você quer (o atalho fica em [`../commands/tarefa.md`](../commands/tarefa.md)). Sem o atalho, copie o comando abaixo e troque apenas o texto entre colchetes pela sua tarefa, com suas palavras. O agente seleciona as skills relevantes, combina suas orientações, cria e executa os testes e explica o resultado em linguagem simples.
+Não é preciso conhecer as skills nem os termos técnicos. O jeito mais fácil é o atalho: digite `/tarefa` seguido do que você quer (o atalho fica em [`../commands/tarefa.md`](../commands/tarefa.md)). Sem o atalho, use o texto do arquivo do comando (veja abaixo), com a sua tarefa em suas palavras. O agente seleciona as skills relevantes, combina suas orientações, cria e executa os testes e explica o resultado em linguagem simples.
 
-```text
-Minha tarefa: [descreva com suas palavras o que você quer]
-
-Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, skills deste projeto que ficaram de fora e por quê (agrupe as que não têm relação com a tarefa), o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
-```
+O texto completo do comando vive em um só lugar, [`tarefa.md`](../commands/tarefa.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
 
 Exemplo: “Minha tarefa: quero um formulário de contato no site que envie as mensagens para o meu e-mail.”
 
@@ -162,14 +182,16 @@ O comando não lista as skills pelo nome, então continua válido quando novas s
 
 Use o `/tarefa` uma vez por tarefa, no início do pedido; as mensagens seguintes da mesma conversa e perguntas simples não precisam dele.
 
+## Varredura de segurança
+
+Para procurar vulnerabilidades no projeto inteiro, digite `/varredura-seguranca` (o atalho fica em [`../commands/varredura-seguranca.md`](../commands/varredura-seguranca.md)); se quiser, acrescente contexto depois dele, como o endereço de um ambiente de testes. Ele não altera arquivos: roda a varredura, separa problema real de falso positivo, lista os problemas por prioridade e pergunta o que corrigir. Antes de consultar a internet sobre as bibliotecas ou testar um endereço, pede sua autorização. Sem o atalho, veja abaixo.
+
+O texto completo do comando vive em um só lugar, [`varredura-seguranca.md`](../commands/varredura-seguranca.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
+
 ## Revisão final do projeto
 
-Para verificar tudo no fim do projeto ou antes de uma entrega, digite `/revisao-final` (o atalho fica em [`../commands/revisao-final.md`](../commands/revisao-final.md)); se quiser, acrescente contexto depois dele. Ao contrário do `/tarefa`, ele não altera arquivos: analisa o projeto, roda os testes existentes e a varredura de segurança, lista os problemas por prioridade e só então pergunta o que corrigir. Sem o atalho, copie o comando abaixo (o texto entre colchetes é opcional):
+Para verificar tudo no fim do projeto ou antes de uma entrega, digite `/revisao-final` (o atalho fica em [`../commands/revisao-final.md`](../commands/revisao-final.md)); se quiser, acrescente contexto depois dele. Ao contrário do `/tarefa`, ele não altera arquivos: analisa o projeto, roda os testes existentes e a varredura de segurança, lista os problemas por prioridade e só então pergunta o que corrigir. Sem o atalho, veja abaixo.
 
-```text
-Faça uma revisão final deste projeto antes da entrega. Contexto adicional (pode estar vazio): [opcional: o que você quiser acrescentar]
-
-Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills deste projeto usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
-```
+O texto completo do comando vive em um só lugar, [`revisao-final.md`](../commands/revisao-final.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
 
 Deixar a verificação só para o final encontra os problemas, mas alguns custam mais para corrigir tarde. Um meio-termo: use `/tarefa` nas partes mais sensíveis (login, pagamentos, dados pessoais) e `/revisao-final` antes de entregar.

@@ -18,6 +18,7 @@ import ssl
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 SEVERIDADES = {"baixa": 0, "media": 1, "alta": 2}
@@ -32,57 +33,114 @@ PADRAO_ERRO = re.compile(
     re.IGNORECASE,
 )
 
+class SemRedirect(urllib.request.HTTPRedirectHandler):
+    """Impede seguimento automático de redirect, para inspecionar o Location."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _origem(url):
+    p = urllib.parse.urlparse(url)
+    porta = p.port or {"http": 80, "https": 443}.get(p.scheme)
+    return (p.scheme, (p.hostname or "").lower(), porta)
+
+
+class RedirectMesmaOrigem(urllib.request.HTTPRedirectHandler):
+    """Segue redirects só dentro da origem autorizada.
+
+    A autorização cobre apenas o host informado em --url: seguir um redirect para outro host
+    (produção, SSO, terceiros, ftp://) enviaria requisições fora do escopo. Redirect para outra
+    origem não é seguido; a resposta 3xx é devolvida como está.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if _origem(newurl) != _origem(req.full_url):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_CONTROLE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+
+
+def limpar(texto):
+    """Remove caracteres de controle (ex.: sequências ANSI) vindos do servidor sondado."""
+    return _CONTROLE.sub("?", str(texto))
+
+
+REDES_LOCAIS = [ipaddress.ip_network(r) for r in (
+    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16",
+    "::1/128", "fc00::/7", "fe80::/10",
+)]
+
+
+def ip_eh_local(ip):
+    # ipaddress.is_private também considera faixas de documentação/reservadas
+    # (ex.: 198.51.100.0/24) que não são ambiente local; por isso a lista explícita.
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    return any(ip.version == rede.version and ip in rede for rede in REDES_LOCAIS)
+
+
 def host_eh_local(host):
     try:
-        ip = ipaddress.ip_address(host)
-        return ip.is_private or ip.is_loopback or ip.is_link_local
+        return ip_eh_local(ipaddress.ip_address(host))
     except ValueError:
         pass
-    if host in ("localhost",) or host.endswith(".localhost") or host.endswith(".local") or host.endswith(".internal"):
+    # Só "localhost" e "*.localhost" (loopback por RFC 6761) valem sem resolver. Sufixos como
+    # ".local"/".internal" não garantem nada: o nome pode resolver para IP público.
+    if host == "localhost" or host.endswith(".localhost"):
         return True
     try:
         infos = socket.getaddrinfo(host, None)
     except OSError:
         return False
+    ips = []
     for info in infos:
         try:
-            ip = ipaddress.ip_address(info[4][0])
+            ips.append(ipaddress.ip_address(info[4][0].split("%", 1)[0]))
         except ValueError:
             continue
-        if ip.is_private or ip.is_loopback or ip.is_link_local:
-            return True
-    return False
+    # Todos os endereços resolvidos precisam ser locais.
+    return bool(ips) and all(ip_eh_local(ip) for ip in ips)
 
 class Bateria:
-    def __init__(self, url, espera, timeout, user_agent):
+    def __init__(self, url, espera, timeout, user_agent, pular_rotas=False, pular_open_redirect=False):
         self.url = url.rstrip("/")
         self.espera = espera
         self.timeout = timeout
         self.user_agent = user_agent
+        self.pular_rotas = pular_rotas
+        self.pular_open_redirect = pular_open_redirect
         self.achados = []
         self.requisicoes = 0
         self.interrompido = None
+        self.opener_sem_redirect = urllib.request.build_opener(SemRedirect())
+        self.opener_mesma_origem = urllib.request.build_opener(RedirectMesmaOrigem())
 
     def achado(self, categoria, titulo, severidade, confianca, detalhe, acao, cwe=""):
         self.achados.append(dict(
-            categoria=categoria, id=None, titulo=titulo, severidade=severidade,
-            confianca=confianca, cwe=cwe, local=self.url, detalhe=detalhe, acao=acao,
+            categoria=categoria, id=None, titulo=limpar(titulo), severidade=severidade,
+            confianca=confianca, cwe=cwe, local=self.url, detalhe=limpar(detalhe), acao=acao,
         ))
 
-    def requisitar(self, caminho="/", headers=None, metodo="GET"):
+    def requisitar(self, caminho="/", headers=None, metodo="GET", seguir_redirect=True):
         alvo = self.url + caminho
         pedido = urllib.request.Request(alvo, method=metodo, headers={"User-Agent": self.user_agent})
         for k, v in (headers or {}).items():
             pedido.add_header(k, v)
         self.requisicoes += 1
+        abridor = self.opener_mesma_origem.open if seguir_redirect else self.opener_sem_redirect.open
         try:
-            with urllib.request.urlopen(pedido, timeout=self.timeout) as resposta:
+            with abridor(pedido, timeout=self.timeout) as resposta:
                 corpo = resposta.read(200_000).decode("utf-8", errors="replace")
                 return resposta.status, dict(resposta.headers.items()), corpo
         except urllib.error.HTTPError as e:
-            corpo = e.read(200_000).decode("utf-8", errors="replace")
-            return e.code, dict(e.headers.items()), corpo
-        time.sleep(self.espera)
+            with e:
+                corpo = e.read(200_000).decode("utf-8", errors="replace")
+                return e.code, dict(e.headers.items()), corpo
+        finally:
+            time.sleep(self.espera)
 
     def parar_se_erro_servidor(self, status):
         if status >= 500:
@@ -100,6 +158,8 @@ class Bateria:
             self.achado("CABECALHOS", "Content-Security-Policy ausente", "baixa", "alta",
                         "Sem CSP, injeções de script dependem apenas do escape da aplicação.",
                         "Defina CSP restritiva com nonces/hashes e verifique violações antes de endurecer.", "CWE-693")
+        else:
+            self.checar_qualidade_csp(csp)
         if "x-frame-options" not in minusculas and "frame-ancestors" not in csp:
             self.achado("CABECALHOS", "Proteção contra clickjacking ausente", "baixa", "alta",
                         "Nem X-Frame-Options nem frame-ancestors na CSP.",
@@ -130,6 +190,57 @@ class Bateria:
                             f"{nome}: {minusculas[nome]!r} facilita mapeamento de versões vulneráveis.",
                             "Remova ou minimize banners de implementação.", "CWE-200")
         return minusculas, headers
+
+    def checar_qualidade_csp(self, csp):
+        """Aponta diretivas que anulam a proteção da CSP contra XSS."""
+        diretivas = {}
+        for parte in csp.split(";"):
+            tokens = parte.strip().split()
+            if tokens:
+                diretivas[tokens[0].lower()] = [t.lower() for t in tokens[1:]]
+        scripts = diretivas.get("script-src", diretivas.get("default-src"))
+        if scripts is None:
+            self.achado("CABECALHOS", "CSP sem script-src nem default-src", "baixa", "alta",
+                        f"CSP: {csp[:160]!r}", "Inclua default-src 'self' (ou script-src explícito).", "CWE-693")
+            return
+        problemas = []
+        tem_nonce_hash = any(t.startswith(("'nonce-", "'sha256-", "'sha384-", "'sha512-")) for t in scripts)
+        if "'unsafe-inline'" in scripts and not tem_nonce_hash:
+            problemas.append("'unsafe-inline'")
+        if "'unsafe-eval'" in scripts:
+            problemas.append("'unsafe-eval'")
+        if any(t in ("*", "http:", "https:", "data:") for t in scripts):
+            problemas.append("origem curinga (*, http:, https: ou data:)")
+        if problemas:
+            self.achado("CABECALHOS", "CSP permissiva para scripts", "baixa", "alta",
+                        f"script-src/default-src contém {', '.join(problemas)}.",
+                        "Use nonces/hashes e origens explícitas; sem isso a CSP não barra XSS.", "CWE-693")
+
+    def checar_redirect_https(self):
+        """Com alvo HTTPS, confere se a versão HTTP redireciona para HTTPS."""
+        partes = urllib.parse.urlparse(self.url)
+        if partes.port not in (None, 443):
+            return
+        alvo_http = urllib.parse.urlunparse(("http", partes.hostname, partes.path or "/", "", "", ""))
+        pedido = urllib.request.Request(alvo_http, headers={"User-Agent": self.user_agent})
+        self.requisicoes += 1
+        try:
+            with self.opener_sem_redirect.open(pedido, timeout=self.timeout) as resposta:
+                status, headers = resposta.status, dict(resposta.headers.items())
+        except urllib.error.HTTPError as e:
+            with e:
+                status, headers = e.code, dict(e.headers.items())
+        except (urllib.error.URLError, OSError):
+            return  # porta 80 fechada: nada servido em texto claro
+        finally:
+            time.sleep(self.espera)
+        if self.parar_se_erro_servidor(status):
+            return
+        location = next((v for k, v in headers.items() if k.lower() == "location"), "")
+        if not (300 <= status < 400 and location.lower().startswith("https://")):
+            self.achado("TRANSPORTE", "HTTP não redireciona para HTTPS", "media", "alta",
+                        f"GET {alvo_http} -> {status}" + (f" Location: {location}" if location else ""),
+                        "Redirecione toda requisição HTTP para HTTPS (301/308) e envie HSTS.", "CWE-319")
 
     def checar_cookies(self, headers):
         cookies = [v for k, v in headers.items() if k.lower() == "set-cookie"]
@@ -215,10 +326,97 @@ class Bateria:
                         f"Allow: {permitir}",
                         "Confirme se são necessários; remova métodos não usados na borda/aplicação.", "CWE-16")
 
+    ROTAS_SENSITIVEIS = (
+        "/.git/config", "/.git/HEAD", "/.env", "/.svn/entries", "/.DS_Store", "/phpinfo.php",
+        "/server-status", "/actuator", "/actuator/env", "/swagger-ui/index.html", "/api-docs",
+        "/v2/api-docs", "/admin", "/backup.zip", "/db.sql", "/robots.txt", "/metrics",
+        "/debug/pprof/", "/.well-known/security.txt",
+    )
+
+    def _exposicao_em_rota(self, caminho, status, corpo):
+        minusculas = corpo.lower()
+        if caminho == "/.git/config" and "[core]" in minusculas:
+            return ("Repositório Git exposto (.git/config)",
+                    "O conteúdo do .git ficou acessível sem autenticação.", "alta")
+        if caminho == "/.git/HEAD" and corpo.startswith("ref: refs/"):
+            return ("Repositório Git exposto (.git/HEAD)",
+                    "O diretório .git está sendo servido; o código-fonte pode ser reconstruído.", "alta")
+        if caminho == "/.DS_Store" and corpo.startswith("\x00\x00\x00\x01Bud1"):
+            return ("Arquivo .DS_Store exposto",
+                    "Revela nomes de arquivos e pastas do servidor.", "baixa")
+        if caminho == "/metrics" and re.search(r"(?m)^# (?:HELP|TYPE) ", corpo):
+            return ("Métricas Prometheus expostas",
+                    "/metrics público revela internos (rotas, versões, filas).", "media")
+        if caminho == "/debug/pprof/" and "profile" in minusculas and "goroutine" in minusculas:
+            return ("Go pprof exposto",
+                    "Endpoints de profiling permitem extrair memória e consumir CPU.", "alta")
+        if caminho == "/.env" and re.search(
+                r"(?mi)^\s*(?:export\s+)?(?:password|secret|api[_-]?key|token|db[_-]?pass)\s*=", corpo):
+            return ("Arquivo .env exposto",
+                    "Variáveis de ambiente/credenciais servidas sem autenticação.", "alta")
+        if caminho == "/phpinfo.php" and "phpinfo" in minusculas:
+            return ("phpinfo() exposto",
+                    "Página phpinfo() acessível revela configuração e caminhos internos.", "media")
+        if caminho == "/server-status" and ("apache status" in minusculas or "server status" in minusculas):
+            return ("Apache server-status exposto", "Página de status do Apache acessível.", "media")
+        if caminho.startswith("/actuator") and ('"_links"' in corpo or "exposures" in minusculas):
+            return ("Spring Boot Actuator exposto",
+                    "Endpoints de actuator podem revelar variáveis de ambiente e internos.", "media")
+        if caminho in ("/swagger-ui/index.html", "/api-docs", "/v2/api-docs") and (
+                "swagger" in minusculas or "openapi" in minusculas):
+            return ("Documentação de API exposta", "Swagger/OpenAPI acessível em produção.", "baixa")
+        if caminho == "/robots.txt" and "user-agent:" in minusculas:
+            return ("robots.txt exposto", "Informativo: mapa de rotas público.", "baixa")
+        if caminho in ("/backup.zip", "/db.sql") and status == 200 and corpo:
+            return ("Possível backup/dump exposto",
+                    f"{caminho} retornou conteúdo ({len(corpo)} bytes).", "alta")
+        if caminho == "/admin" and status == 200:
+            return ("Rota administrativa acessível",
+                    "/admin respondeu 200; confirme autenticação e autorização.", "baixa")
+        return None
+
+    def checar_rotas_sensiveis(self):
+        for caminho in self.ROTAS_SENSITIVEIS:
+            status, _, corpo = self.requisitar(caminho, seguir_redirect=False)
+            if self.parar_se_erro_servidor(status):
+                return
+            if caminho == "/.well-known/security.txt":
+                if status != 200 or "contact:" not in corpo.lower():
+                    self.achado("EXPOSICAO", "security.txt ausente", "baixa", "media",
+                                "Sem /.well-known/security.txt, pesquisadores não têm canal para reportar falhas.",
+                                "Publique security.txt (RFC 9116) com Contact e Expires.", "")
+                continue
+            if not (200 <= status < 400):
+                continue
+            exposicao = self._exposicao_em_rota(caminho, status, corpo)
+            if exposicao:
+                titulo, detalhe, severidade = exposicao
+                self.achado("EXPOSICAO", titulo, severidade, "media", detalhe,
+                            "Restrinja acesso, remova artefatos sensíveis e desative endpoints de diagnóstico em produção.",
+                            "CWE-200")
+
+    ROTAS_REDIRECT = ("/logout", "/sair", "/redirect", "/login")
+    PARAMETROS_REDIRECT = ("url", "next")
+
+    def checar_open_redirect(self):
+        origem = "https://origem-sintetica.invalid"
+        for rota in self.ROTAS_REDIRECT:
+            for parametro in self.PARAMETROS_REDIRECT:
+                caminho = f"{rota}?{parametro}={origem}"
+                status, headers, _ = self.requisitar(caminho, seguir_redirect=False)
+                if self.parar_se_erro_servidor(status):
+                    return
+                if not (300 <= status < 400):
+                    continue
+                location = next((v for k, v in headers.items() if k.lower() == "location"), "")
+                if "origem-sintetica.invalid" in location:
+                    self.achado("REDIRECIONAMENTO", "Redirecionamento aberto", "alta", "alta",
+                                f"GET {caminho} -> Location: {location}",
+                                "Valide destinos contra permitlist; não reflita parâmetro de URL.", "CWE-601")
+
     def checar_tls(self):
-        from urllib.parse import urlparse
-        host = urlparse(self.url).hostname
-        porta = urlparse(self.url).port or 443
+        host = urllib.parse.urlparse(self.url).hostname
+        porta = urllib.parse.urlparse(self.url).port or 443
         contexto = ssl.create_default_context()
         try:
             with socket.create_connection((host, porta), timeout=self.timeout) as bruto:
@@ -268,8 +466,19 @@ class Bateria:
         self.checar_metodos()
         if self.interrompido:
             return
+        if not self.pular_rotas:
+            self.checar_rotas_sensiveis()
+        if self.interrompido:
+            return
+        if not self.pular_open_redirect:
+            self.checar_open_redirect()
+        if self.interrompido:
+            return
         if self.url.startswith("https://"):
             self.checar_tls()
+            if self.interrompido:
+                return
+            self.checar_redirect_https()
 
 def cor(texto, codigo, ativo):
     return f"\033[{codigo}m{texto}\033[0m" if ativo else texto
@@ -296,7 +505,7 @@ def imprimir(bateria, ativo_cor):
         print(f"  ação: {a['acao']}")
         print()
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Checagens HTTP não destrutivas em ambiente controlado e autorizado.",
     )
@@ -310,7 +519,11 @@ def main():
     parser.add_argument("--user-agent", default="bateria-vulnerabilidades/1.0 (ambiente controlado)")
     parser.add_argument("--json", help="grava relatório em JSON")
     parser.add_argument("--sem-cor", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--pular-rotas-sensiveis", action="store_true",
+                        help="não sonda rotas comuns de arquivos/endpoints expostos")
+    parser.add_argument("--pular-open-redirect", action="store_true",
+                        help="não testa redirecionamento aberto nas rotas comuns")
+    args = parser.parse_args(argv)
 
     if not args.url.startswith(("http://", "https://")):
         sys.exit("erro: --url deve começar com http:// ou https://")
@@ -318,14 +531,15 @@ def main():
         sys.exit("recusa: checagens HTTP exigem --autorizado declarando ambiente controlado e permissão explícita.\n"
                  "Sem autorização, use apenas a bateria estática (verificacao_estatica.py).")
 
-    from urllib.parse import urlparse
-    host = urlparse(args.url).hostname
+    host = urllib.parse.urlparse(args.url).hostname
     if host and not host_eh_local(host) and not args.forcar_externo:
         sys.exit(f"recusa: {host} não parece ambiente local/staging.\n"
                  "Para alvos externos, confirme a autorização e reexecute com --forcar-externo.\n"
                  "Produção e sistemas de terceiros exigem escopo e permissão formais.")
 
-    bateria = Bateria(args.url, args.espera, args.timeout, args.user_agent)
+    bateria = Bateria(args.url, args.espera, args.timeout, args.user_agent,
+                      pular_rotas=args.pular_rotas_sensiveis,
+                      pular_open_redirect=args.pular_open_redirect)
     try:
         bateria.executar()
     except KeyboardInterrupt:
@@ -342,7 +556,7 @@ def main():
             por_severidade[a["severidade"]] += 1
         relatorio = dict(
             ferramenta="verificacao_http",
-            versao="1.0",
+            versao="1.1",
             gerado_em=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             alvo=args.url,
             requisicoes=bateria.requisicoes,
@@ -357,6 +571,7 @@ def main():
     if any(a["severidade"] == "alta" for a in bateria.achados):
         sys.exit(1)
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

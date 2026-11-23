@@ -73,4 +73,4 @@ Faça testes ativos contra a versão vulnerável somente em ambiente isolado e a
 
 Distinga claramente “código corrigido”, “artefato construído” e “risco eliminado em produção”; são estados diferentes.
 
-Para prevenção contínua — pinning de dependências, builds confiáveis, SBOM e proveniência — use `supply-chain-construtor`; para bateria executável de verificação, `testes-vulnerabilidades`; quando o finding escala para incidente, `resposta-incidentes`.
+Para prevenção contínua — pinning de dependências, builds confiáveis, SBOM e proveniência — use `supply-chain-construtor`; para bateria executável de verificação, `testes-vulnerabilidades`; quando o finding escala para incidente, `resposta-incidentes`; para segredo exposto, `gestao-segredos`; para achado de configuração de infraestrutura, `seguranca-infraestrutura`.

@@ -52,7 +52,7 @@ Numere sequencialmente, nunca reescreva um ADR aceito — supra-o com um novo e 
 
 - Não crie documento “para depois preencher”; sem conteúdo real, não crie.
 - Marque incerteza e pendências explicitamente (“validar com X”) em vez de afirmar.
-- Nunca inclua segredos, credenciais, chaves ou dados pessoais em documentos, diagramas ou exemplos; se aparecer por engano, trate como exposição e rotacione conforme `resposta-vulnerabilidades`.
+- Nunca inclua segredos, credenciais, chaves ou dados pessoais em documentos, diagramas ou exemplos; se aparecer por engano, trate como exposição e conduza a contenção e a rotação conforme `gestao-segredos`.
 - Diagramas simples e datados; retire diagramas de arquitetura que não correspondem ao código.
 
 ## Formato de entrega

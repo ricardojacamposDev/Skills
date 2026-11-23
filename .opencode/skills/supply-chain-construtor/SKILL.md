@@ -59,4 +59,4 @@ Cada dependência, ferramenta de build e artefato publicado é superfície de at
 4. **Evidências** — build reproduzível/verificado, SBOM gerado, verificações de integridade.
 5. **Pendências e riscos** — lacunas conhecidas e prioridade de fechamento.
 
-Para investigar um achado de segurança na cadeia, use `pesquisa-vulnerabilidades`; para priorizar e corrigir CVE confirmada, `resposta-vulnerabilidades`; para decisões de adicionar/remover dependência, `arquitetura-aplicacoes-web`; para pipelines e deploy, `entrega-producao-observabilidade`.
+Para investigar um achado de segurança na cadeia, use `pesquisa-vulnerabilidades`; para priorizar e corrigir CVE confirmada, `resposta-vulnerabilidades`; para decisões de adicionar/remover dependência, `arquitetura-aplicacoes-web`; para pipelines e deploy, `entrega-producao-observabilidade`; para segredos de CI e de build, `gestao-segredos`; para varredura de dependências (OSV) e de workflows de CI, `testes-vulnerabilidades`.

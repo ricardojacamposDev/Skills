@@ -1,0 +1,7 @@
+---
+description: Varredura completa de vulnerabilidades do projeto; relata por prioridade sem alterar arquivos
+---
+
+Faça uma varredura de vulnerabilidades deste projeto. Contexto adicional (pode estar vazio): $ARGUMENTS
+
+Siga a skill testes-vulnerabilidades e rode a varredura completa (varredura.py) com histórico git. Antes de consultar vulnerabilidades de dependências na internet (--osv), avise que nome e versão das bibliotecas serão enviados ao banco público OSV e peça minha confirmação. Só rode as checagens HTTP se eu informar o endereço de um ambiente local ou de testes e autorizar; nunca contra produção ou sites de terceiros. Nesta etapa, não altere os arquivos do projeto (só a pasta relatorio-seguranca/, ignorada pelo git, recebe os relatórios): apenas verifique e relate. Leia o código de cada achado para separar problema real de falso positivo e use as skills deste projeto que se aplicarem (segredos, infraestrutura, dependências, aplicação). Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais; para segredos, diga só onde estão e o que fazer. Liste os problemas em ordem de prioridade (corrigir já, importante, pode esperar), dizendo o que é cada um, por que importa e onde está. Diga o que a varredura automática não cobre e quais testes manuais ou casos dinâmicos recomenda. No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.

@@ -11,6 +11,7 @@ import datetime
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ CONFIANCAS = {"baixa": 0, "media": 1, "alta": 2}
 
 EXTENSOES_PADRAO = {
     ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".java", ".php",
-    ".rb", ".go", ".rs", ".kt", ".cs", ".c", ".cpp", ".sh", ".bash", ".sql",
+    ".rb", ".go", ".rs", ".kt", ".cs", ".c", ".h", ".hpp", ".cpp", ".sh", ".bash", ".sql",
     ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".json", ".html",
     ".htm", ".vue", ".svelte", ".tf", ".tfvars", ".env", ".dockerfile",
     "Dockerfile", "Jenkinsfile", ".gitignore",
@@ -31,18 +32,30 @@ EXTENSOES_RB = {".rb"}
 EXTENSOES_GO = {".go"}
 EXTENSOES_JAVA = {".java"}
 EXTENSOES_CONF = {".env", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf", ".json"}
+EXTENSOES_IAC = {".tf", ".tfvars"}
+EXTENSOES_DOCKERFILE = {"Dockerfile", ".dockerfile"}
+EXTENSOES_C = {".c", ".h", ".hpp", ".cpp"}
+EXTENSOES_CS = {".cs"}
 
 DIRETORIOS_IGNORADOS = {
-    "node_modules", ".git", ".venv", "venv", "env", ".tox", ".mypy_cache",
+    "node_modules", ".git", ".tox", ".mypy_cache",
     ".pytest_cache", "__pycache__", "dist", "build", "target", "vendor",
     "coverage", ".next", ".nuxt", ".terraform", ".idea", ".vscode", ".eggs",
-    "site-packages", ".cache", ".hg", ".svn",
+    "site-packages", ".cache", ".hg", ".svn", "relatorio-seguranca",
 }
+# "env"/"venv" são ignorados só quando contêm pyvenv.cfg; uma pasta "env/" de configuração
+# (com credenciais) precisa ser varrida.
+DIRETORIOS_SO_SE_VENV = {"env", "venv", ".venv"}
 ARQUIVOS_IGNORADOS = {
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
     "Pipfile.lock", "composer.lock", "Gemfile.lock", "go.sum", ".DS_Store",
 }
 TAMANHO_MAXIMO = 1_500_000
+LINHA_MAXIMA_HISTORICO = 5000
+
+# O que foi pulado por limite de tamanho: precisa aparecer no relatório, porque um segredo
+# num arquivo grande ou numa linha enorme (bundle minificado) passaria despercebido.
+PULADOS = {"arquivos_grandes": [], "linhas_longas_historico": 0}
 
 PLACEHOLDERS = re.compile(
     r"(?i)\A(?:placeholder|changeme|change[-_]?me|example|exemplo|sample|"
@@ -92,9 +105,42 @@ def _validar_debug(m, linha, caminho):
     posix = str(caminho).replace(os.sep, "/").lower()
     return bool(re.search(r"(?i)(settings|config|\.env|app\.py|manage\.py|wsgi|asgi|main|server|run\.py|dockerfile)", posix)) or posix.endswith(".env") or "/.env" in posix
 
-def _validar_nao_fixture(m, linha, caminho):
+FIXTURE = re.compile(
+    r"(?i)(?:^|/)(?:tests?|testdata|__tests__|fixtures?|mocks?|examples?|exemplos?)/|"
+    r"\.(?:test|spec)\.|(?:^|/)test_[^/]*$"
+)
+TEMPLATE_CONFIG = re.compile(r"(?i)\.(?:example|sample|template|dist|exemplo|modelo)$")
+
+def _eh_fixture_ou_modelo(caminho):
+    """Arquivo de teste/fixture ou modelo (.env.example): não é credencial real."""
+    posix = str(caminho).replace(os.sep, "/")
+    return bool(FIXTURE.search(posix) or TEMPLATE_CONFIG.search(posix))
+
+def _validar_workflow(m, linha, caminho):
     posix = str(caminho).replace(os.sep, "/").lower()
-    return not re.search(r"(?i)(/test|/tests/|/fixtures?/|/mocks?/|/examples?/|\.test\.|\.spec\.|test_)", posix)
+    return ".github/workflows/" in posix or posix.endswith(".gitlab-ci.yml")
+
+def _validar_ci_injecao(m, linha, caminho):
+    # Expressões em `if:` são avaliadas pelo runner, não pelo shell.
+    return _validar_workflow(m, linha, caminho) and not re.match(r"^\s*-?\s*if\s*:", linha)
+
+def _validar_dockerfile_ou_script(m, linha, caminho):
+    posix = str(caminho).replace(os.sep, "/").lower()
+    return _validar_dockerfile(m, linha, caminho) or posix.endswith((".sh", ".bash", ".yml", ".yaml"))
+
+def _validar_nosql(m, linha, caminho):
+    return bool(re.search(r"(?i)\b(req|request|ctx|params|query|body)\b", linha))
+
+def _validar_jwt_verify(m, linha, caminho):
+    return bool(re.search(r"(?i)(jwt|jose|jsonwebtoken|decode|verify)", linha))
+
+def _validar_dockerfile(m, linha, caminho):
+    posix = str(caminho).replace(os.sep, "/").lower()
+    nome = os.path.basename(posix)
+    return nome == "dockerfile" or nome.startswith("dockerfile.") or "/dockerfile" in posix
+
+def _validar_php_xss(m, linha, caminho):
+    return not re.search(r"(?i)\b(?:htmlspecialchars|htmlentities)\s*\(", linha)
 
 # Padrões de SQL montado em string. O conteúdo de cada literal exclui apenas o
 # seu próprio delimitador, para não parar em aspas internas (WHERE x = '{v}').
@@ -414,6 +460,273 @@ PADROES = [
          titulo="Nome de arquivo temporário previsível (mktemp)", cwe="CWE-377",
          padrao=r"\bmktemp\s*\(", extensoes=EXTENSOES_PY,
          acao="Use tempfile.mkstemp/NamedTemporaryFile, que cria com exclusividade segura."),
+
+    # Infraestrutura como código e contêineres
+    dict(id="iac-cidr-aberto", categoria="IAC", severidade="media", confianca="media",
+         titulo="Faixa de IP aberta (0.0.0.0/0) em regra de rede", cwe="CWE-284",
+         padrao=r"""cidr_blocks\s*=\s*\[[^\]\n]*["']0\.0\.0\.0/0["']""", extensoes=EXTENSOES_IAC,
+         acao="Restrinja aos IPs/origens necessários; acesso público amplo exige justificativa e monitoramento."),
+    dict(id="iac-s3-publico", categoria="IAC", severidade="media", confianca="media",
+         titulo="Bucket/recurso de storage com ACL pública", cwe="CWE-284",
+         padrao=r"""acl\s*=\s*["']public-read(?:-write)?["']""", extensoes=EXTENSOES_IAC,
+         acao="Remova a ACL pública; use policies com princípio do menor privilégio e Block Public Access."),
+    dict(id="iac-imagem-latest", categoria="IAC", severidade="media", confianca="media",
+         titulo="Imagem de container fixada em :latest", cwe="CWE-1104",
+         padrao=r"(?i)^\s*FROM\s+(?:\S+:latest\b|latest\b)", extensoes=None, validar=_validar_dockerfile,
+         acao="Fixe a imagem por tag estável ou digest; :latest é mutável e quebra a reproduzibilidade."),
+    dict(id="iac-docker-root", categoria="IAC", severidade="baixa", confianca="media",
+         titulo="Container executando como root", cwe="CWE-284",
+         padrao=r"(?i)^\s*USER\s+root\s*$", extensoes=None, validar=_validar_dockerfile,
+         acao="Defina USER não privilegiado e evite root dentro do container."),
+    dict(id="iac-privileged", categoria="IAC", severidade="alta", confianca="media",
+         titulo="Contêiner/pod em modo privilegiado", cwe="CWE-250",
+         padrao=r"(?i)^\s*privileged\s*:\s*true\s*$", extensoes={".yml", ".yaml"},
+         acao="Remova privileged; conceda apenas capacidades específicas necessárias."),
+    dict(id="iac-hostnetwork", categoria="IAC", severidade="media", confianca="media",
+         titulo="Pod usando rede do host", cwe="CWE-284",
+         padrao=r"(?i)^\s*hostNetwork\s*:\s*true\s*$", extensoes={".yml", ".yaml"},
+         acao="Evite hostNetwork; exponha portas explicitamente e restrinja interfaces."),
+    dict(id="iac-chmod-aberto", categoria="IAC", severidade="baixa", confianca="media",
+         titulo="Permissão de arquivo excessiva (chmod 777)", cwe="CWE-732",
+         padrao=r"(?i)\bchmod\s+(?:777|a\+rwx)\b", extensoes=None, validar=_validar_dockerfile,
+         acao="Use permissões mínimas (ex.: 755/644) e evite escrita por todos."),
+    dict(id="iac-runasnonroot-false", categoria="IAC", severidade="baixa", confianca="baixa",
+         titulo="Pod explicitamente permitido rodar como root", cwe="CWE-284",
+         padrao=r"(?i)^\s*runAsNonRoot\s*:\s*false\s*$", extensoes={".yml", ".yaml"},
+         acao="Defina runAsNonRoot: true e um usuário não root no container."),
+
+    # XML externo (XXE)
+    dict(id="xxe-lxml-noent", categoria="XXE", severidade="alta", confianca="media",
+         titulo="lxml com resolução de entidades externas", cwe="CWE-611",
+         padrao=r"resolve_entities\s*=\s*(?:True|true)", extensoes=EXTENSOES_PY,
+         acao="Use parser seguro: defusedxml ou XMLParser(resolve_entities=False, no_network=True)."),
+    dict(id="xxe-php-noent", categoria="XXE", severidade="alta", confianca="media",
+         titulo="PHP com substituição de entidades XML (LIBXML_NOENT)", cwe="CWE-611",
+         padrao=r"\bLIBXML_NOENT\b", extensoes=EXTENSOES_PHP,
+         acao="Não habilite LIBXML_NOENT com entrada externa; use libxml_disable_entity_loader(true)."),
+    dict(id="xxe-dotnet-dtd", categoria="XXE", severidade="alta", confianca="media",
+         titulo=".NET com DtdProcessing.Parse", cwe="CWE-611",
+         padrao=r"DtdProcessing\s*\.\s*Parse", extensoes=EXTENSOES_CS,
+         acao="Use DtdProcessing.Ignore/Prohibit e XmlReader sem XmlResolver."),
+    dict(id="xxe-java-disallow-false", categoria="XXE", severidade="alta", confianca="media",
+         titulo="Java reabilitando DOCTYPE no parser XML", cwe="CWE-611",
+         padrao=r"""disallow-doctype-decl["']?\s*,\s*(?:false|False)""", extensoes=EXTENSOES_JAVA,
+         acao="Mantenha disallow-doctype-decl=true e FEATURE_SECURE_PROCESSING."),
+    dict(id="xxe-java-entity-expand", categoria="XXE", severidade="media", confianca="media",
+         titulo="Java expandindo referências de entidade", cwe="CWE-611",
+         padrao=r"setExpandEntityReferences\s*\(\s*(?:true|True)\s*\)", extensoes=EXTENSOES_JAVA,
+         acao="Desative expansão de entidades para XML não confiável."),
+    dict(id="xxe-node-noent", categoria="XXE", severidade="baixa", confianca="baixa",
+         titulo="Parser XML Node com noent habilitado", cwe="CWE-611",
+         padrao=r"(?i)\bnoent\s*:\s*true", extensoes=EXTENSOES_WEB,
+         acao="Confirme a biblioteca e desative substituição de entidades para entrada externa."),
+
+    # Injeção de template no servidor (SSTI)
+    dict(id="ssti-render-template-string", categoria="SSTI", severidade="alta", confianca="media",
+         titulo="Template Flask montado a partir de string", cwe="CWE-1336",
+         padrao=r"""render_template_string\s*\(\s*(?:[^\n)]*\+|f["'])""", extensoes=EXTENSOES_PY,
+         acao="Renderize template de arquivo com contexto; nunca monte template com entrada do usuário."),
+    dict(id="ssti-jinja-template", categoria="SSTI", severidade="alta", confianca="media",
+         titulo="Jinja Template construído por concatenação", cwe="CWE-1336",
+         padrao=r"""\bTemplate\s*\(\s*["'][^"'\n]*["']\s*\+""", extensoes=EXTENSOES_PY,
+         acao="Use templates de arquivo; concatenação em Template() permite execução de expressão."),
+    dict(id="ssti-thymeleaf", categoria="SSTI", severidade="alta", confianca="media",
+         titulo="Expressão de pré-processamento Thymeleaf (__${...}__)", cwe="CWE-1336",
+         padrao=r"__\$\{", extensoes={".html", ".htm"},
+         acao="Evite __${...}__ com dados externos; use link/text expression sem pré-processamento."),
+    dict(id="ssti-twig", categoria="SSTI", severidade="alta", confianca="media",
+         titulo="Twig createTemplate com concatenação", cwe="CWE-1336",
+         padrao=r"""createTemplate\s*\(\s*["'][^"'\n]*["']\s*(?:\+|\s*\.)""", extensoes=EXTENSOES_PHP,
+         acao="Renderize templates de arquivo; não monte template a partir de input."),
+    dict(id="ssti-freemarker", categoria="SSTI", severidade="media", confianca="baixa",
+         titulo="FreeMarker com nome de template dinâmico", cwe="CWE-1336",
+         padrao=r"new\s+Template\s*\(\s*[A-Za-z_$]", extensoes=EXTENSOES_JAVA,
+         acao="Confirme que o nome do template não deriva de entrada externa."),
+
+    # NoSQL
+    dict(id="nosql-mongo-operator", categoria="NOSQL", severidade="media", confianca="media",
+         titulo="Operador MongoDB em consulta com dado de request", cwe="CWE-943",
+         padrao=r"\$(?:where|ne|gt|gte|lt|lte|regex|exists)\s*:",
+         extensoes=EXTENSOES_WEB, validar=_validar_nosql,
+         acao="Valide tipos e use operadores only quando o campo for controlado; $where com input é risco grave."),
+    dict(id="nosql-query-request", categoria="NOSQL", severidade="alta", confianca="media",
+         titulo="Consulta NoSQL montada com objeto de request", cwe="CWE-943",
+         padrao=r"\.(?:find|findOne|aggregate|count|deleteMany|updateMany|updateOne|deleteOne)\s*\(\s*(?:req|request|ctx|params)\.",
+         extensoes=EXTENSOES_WEB,
+         acao="Nunca passe req.query/req.body direto como filtro; projete um objeto de consulta permitido."),
+
+    # JWT
+    dict(id="jwt-alg-none", categoria="JWT", severidade="alta", confianca="alta",
+         titulo="JWT aceitando algoritmo 'none'", cwe="CWE-347",
+         padrao=r"""algorithms\s*:\s*\[?\s*["']none["']|algorithm\s*[:=]\s*["']none["']""",
+         extensoes=EXTENSOES_WEB,
+         acao="Exija algoritmo específico (ex.: HS256/RS256) e rejeite 'none'."),
+    dict(id="jwt-sem-verificacao", categoria="JWT", severidade="alta", confianca="media",
+         titulo="JWT decodificado sem verificação de assinatura", cwe="CWE-347",
+         padrao=r"""jwt\.decode\s*\(\s*[^,)\n]+\s*\)|verify\s*:\s*(?:False|false)""",
+         extensoes=None, validar=_validar_jwt_verify,
+         acao="Sempre verifique assinatura e expiração no servidor; decode sem verify não valida o token."),
+    dict(id="jwt-secret-curto", categoria="JWT", severidade="media", confianca="media",
+         titulo="JWT com segredo curto/fraco em código", cwe="CWE-345",
+         padrao=r"""(?:jwt|jose)\.[a-z]+\([^)\n]{0,80},\s*["'][^"']{0,15}["']""", extensoes=None,
+         acao="Use segredo longo gerado por CSPRNG, em gerenciador de segredos, e rotacione."),
+
+    # Prototype pollution
+    dict(id="pp-object-assign-request", categoria="PROTOTYPE_POLLUTION", severidade="alta", confianca="media",
+         titulo="Object.assign mesclando dado de request", cwe="CWE-1321",
+         padrao=r"Object\.assign\s*\([^)\n]*(?:req|request|ctx|params)\.",
+         extensoes=EXTENSOES_WEB,
+         acao="Mescle para objeto-alvo novo e valide chaves; evite merge recursivo com input."),
+    dict(id="pp-lodash-merge-request", categoria="PROTOTYPE_POLLUTION", severidade="alta", confianca="media",
+         titulo="_.merge mesclando dado de request", cwe="CWE-1321",
+         padrao=r"_\.merge(?:With)?\s*\([^)\n]*(?:req|request|ctx|params)\.",
+         extensoes=EXTENSOES_WEB,
+         acao="Use merge com fonte validada/serializada ou biblioteca resistente a prototype pollution."),
+
+    # LDAP
+    dict(id="ldap-injection", categoria="LDAP", severidade="media", confianca="media",
+         titulo="Filtro LDAP montado por concatenação", cwe="CWE-90",
+         padrao=r"""\(?(?:uid|cn|ou|dc|member|objectClass)=[^"'\n]*["']\s*\+""", extensoes=None,
+         acao="Escape caracteres de filtro LDAP e valide formato do input."),
+
+    # GraphQL
+    dict(id="graphql-query-concat", categoria="GRAPHQL", severidade="media", confianca="baixa",
+         titulo="Query GraphQL montada por concatenação", cwe="CWE-89",
+         padrao=r"""\bquery\s*[:=]\s*[`"'][^`"'\n]*[`"']\s*\+""", extensoes=EXTENSOES_WEB,
+         acao="Use variables/documents estáticos; concatenação permite injeção de campo/argumento."),
+    dict(id="graphql-introspection", categoria="GRAPHQL", severidade="baixa", confianca="baixa",
+         titulo="Introspecção GraphQL explicitamente habilitada", cwe="CWE-200",
+         padrao=r"introspection\s*:\s*(?:true|True)", extensoes=EXTENSOES_WEB,
+         acao="Desative introspecção em produção e limite profundidade/complexidade de query."),
+
+    # C/C++
+    dict(id="c-funcoes-inseguras", categoria="MEMORIA", severidade="alta", confianca="media",
+         titulo="Função C insegura (estouro de buffer)", cwe="CWE-120",
+         padrao=r"\b(?:gets|strcpy|strcat|sprintf|vsprintf|alloca)\s*\(", extensoes=EXTENSOES_C,
+         acao="Use strncpy/strlcpy/snprintf com limite e verificação; prefira linguagens/APIs seguras."),
+    dict(id="c-system", categoria="MEMORIA", severidade="alta", confianca="media",
+         titulo="system() em C/C++", cwe="CWE-78",
+         padrao=r"\bsystem\s*\(", extensoes=EXTENSOES_C,
+         acao="Evite shell; use exec* com argv e valide caminhos."),
+
+    # Go
+    dict(id="go-sql-concat", categoria="INJECAO_SQL", severidade="alta", confianca="media",
+         titulo="Query Go montada com fmt.Sprintf", cwe="CWE-89",
+         padrao=r"(?:db|tx|conn)\.(?:Query|Exec|QueryRow)\w*\s*\(\s*fmt\.Sprintf", extensoes=EXTENSOES_GO,
+         acao="Use placeholders (? ou $n) e args; não monte query com Sprintf."),
+    dict(id="go-command-shell", categoria="INJECAO_COMANDO", severidade="alta", confianca="media",
+         titulo="Go executando shell com -c", cwe="CWE-78",
+         padrao=r"""exec\.Command\s*\(\s*["'](?:sh|bash|cmd|powershell)["']\s*,\s*["']-c["']""", extensoes=EXTENSOES_GO,
+         acao="Evite shell; execute o binário com argv e valide argumentos."),
+    dict(id="go-ssrf-request", categoria="SSRF", severidade="alta", confianca="media",
+         titulo="Go requisitando URL de variável/request", cwe="CWE-918",
+         padrao=r"http\.(?:Get|Post|NewRequest)\s*\(\s*(?:url|target|req\.)", extensoes=EXTENSOES_GO,
+         acao="Aplique permitlist de destinos e bloqueie endereços internos antes de requisitar."),
+
+    # Ruby
+    dict(id="ruby-sql-concat", categoria="INJECAO_SQL", severidade="media", confianca="media",
+         titulo="Query Ruby montada por concatenação", cwe="CWE-89",
+         padrao="(?:" + _sql_literal_montado('"') + "|" + _sql_literal_montado("'") + r")\s*\+",
+         extensoes=EXTENSOES_RB,
+         acao="Use consultas parametrizadas/AR do Rails; concatenação com input permite injeção."),
+    dict(id="ruby-constantize", categoria="INJECAO_COMANDO", severidade="alta", confianca="media",
+         titulo="Ruby com constantize/send a partir de params", cwe="CWE-95",
+         padrao=r"\bconstantize\b|\bsend\s*\(\s*(?:params|request)\.", extensoes=EXTENSOES_RB,
+         acao="Nunca resolva constantes/métodos a partir de input; use permitlist."),
+
+    # PHP
+    dict(id="php-xss-echo", categoria="XSS", severidade="alta", confianca="media",
+         titulo="PHP ecoando variável de request sem escape", cwe="CWE-79",
+         padrao=r"echo\s+[^;\n]*\$_(?:GET|POST|REQUEST|COOKIE)", extensoes=EXTENSOES_PHP,
+         validar=_validar_php_xss,
+         acao="Aplique htmlspecialchars com contexto correto antes de ecoar."),
+    dict(id="php-include-request", categoria="INJECAO_COMANDO", severidade="alta", confianca="media",
+         titulo="include/require com variável de request (LFI/RFI)", cwe="CWE-98",
+         padrao=r"\b(?:include|require)(?:_once)?\s*\(?\s*[^;\n]*\$_(?:GET|POST|REQUEST|COOKIE)",
+         extensoes=EXTENSOES_PHP,
+         acao="Nunca inclua arquivo a partir de entrada; mapeie a entrada para uma permitlist de arquivos fixos."),
+
+    # Redirecionamento aberto
+    dict(id="redirect-aberto-py", categoria="REDIRECIONAMENTO", severidade="media", confianca="media",
+         titulo="Redirect para destino vindo do request", cwe="CWE-601",
+         padrao=(r"\b(?:redirect|HttpResponseRedirect|RedirectResponse)\s*\(\s*request\."
+                 r"(?:args|GET|POST|form|values|query_params|params)"),
+         extensoes=EXTENSOES_PY,
+         acao="Aceite apenas caminhos relativos ou hosts de uma permitlist (ex.: url_has_allowed_host_and_scheme)."),
+    dict(id="redirect-aberto-js", categoria="REDIRECIONAMENTO", severidade="media", confianca="media",
+         titulo="res.redirect com destino vindo do request", cwe="CWE-601",
+         padrao=r"\bres\.redirect\s*\(\s*(?:\d{3}\s*,\s*)?req\.(?:query|body|params)",
+         extensoes=EXTENSOES_WEB,
+         acao="Valide o destino contra permitlist ou aceite apenas caminhos relativos ao próprio site."),
+    dict(id="redirect-dom", categoria="REDIRECIONAMENTO", severidade="baixa", confianca="baixa",
+         titulo="Navegação no navegador com valor da URL (location.hash/search)", cwe="CWE-601",
+         padrao=r"\b(?:window\.)?location(?:\.href)?\s*=\s*[^;\n=]*(?:location\.(?:hash|search)|URLSearchParams)",
+         extensoes=EXTENSOES_WEB,
+         acao="Valide o destino (mesma origem ou permitlist); bloqueie esquemas javascript:/data:."),
+
+    # Execução dinâmica e configuração de frameworks
+    dict(id="py-eval-request", categoria="INJECAO_COMANDO", severidade="alta", confianca="media",
+         titulo="eval/exec com dado de request", cwe="CWE-95",
+         padrao=r"\b(?:eval|exec)\s*\([^)\n]*\brequest\.", extensoes=EXTENSOES_PY,
+         acao="Remova eval/exec sobre entrada; use parser explícito (json, ast.literal_eval) ou mapeamento fixo."),
+    dict(id="java-runtime-exec", categoria="INJECAO_COMANDO", severidade="media", confianca="baixa",
+         titulo="Runtime.exec em Java", cwe="CWE-78",
+         padrao=r"Runtime\.getRuntime\s*\(\s*\)\s*\.\s*exec\s*\(", extensoes=EXTENSOES_JAVA | {".kt"},
+         acao="Prefira ProcessBuilder com lista de argumentos e permitlist; nunca concatene entrada no comando."),
+    dict(id="flask-debug-run", categoria="CONFIGURACAO", severidade="media", confianca="alta",
+         titulo="Servidor iniciado com debug=True", cwe="CWE-489",
+         padrao=r"\.run\s*\([^)\n]*\bdebug\s*=\s*True", extensoes=EXTENSOES_PY,
+         acao="Debug expõe console interativo/stack traces; controle por variável de ambiente e desligue fora do desenvolvimento."),
+    dict(id="django-allowed-hosts", categoria="CONFIGURACAO", severidade="media", confianca="media",
+         titulo="ALLOWED_HOSTS aceitando qualquer host", cwe="CWE-644",
+         padrao=r"""ALLOWED_HOSTS\s*=\s*\[[^\]\n]*["']\*["']""", extensoes=EXTENSOES_PY,
+         acao="Liste os domínios reais; '*' permite envenenamento de Host em links de redefinição de senha e cache."),
+    dict(id="spring-csrf-disable", categoria="SESSAO", severidade="media", confianca="media",
+         titulo="Proteção CSRF do Spring Security desativada", cwe="CWE-352",
+         padrao=r"csrf\s*\(\s*\)\s*\.\s*disable\s*\(|csrf\s*\(\s*(?:\w+\s*->\s*\w+\s*\.\s*disable\s*\(|AbstractHttpConfigurer::disable)",
+         extensoes=EXTENSOES_JAVA | {".kt"},
+         acao="Aceitável só para API sem cookies (token no header); com sessão por cookie, mantenha CSRF ativo."),
+    dict(id="js-postmessage-curinga", categoria="CONFIGURACAO", severidade="baixa", confianca="media",
+         titulo="postMessage com targetOrigin '*'", cwe="CWE-345",
+         padrao=r"""\.postMessage\s*\([^)\n]*,\s*["']\*["']""", extensoes=EXTENSOES_WEB,
+         acao="Informe a origem exata do destinatário e valide event.origin no receptor."),
+
+    # Contêineres e Kubernetes (complemento)
+    dict(id="k8s-escalada-privilegio", categoria="IAC", severidade="baixa", confianca="media",
+         titulo="Contêiner permite escalada de privilégio", cwe="CWE-250",
+         padrao=r"(?i)^\s*allowPrivilegeEscalation\s*:\s*true\s*$", extensoes={".yml", ".yaml"},
+         acao="Defina allowPrivilegeEscalation: false e remova capacidades desnecessárias (drop: [ALL])."),
+    dict(id="docker-segredo-build", categoria="IAC", severidade="media", confianca="media",
+         titulo="Segredo passado por ENV/ARG no Dockerfile (fica gravado na imagem)", cwe="CWE-538",
+         padrao=r"(?i)^\s*(?:ENV|ARG)\s+[A-Z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_?KEY|PRIVATE_?KEY)[A-Z0-9_]*\b",
+         extensoes=None, validar=_validar_dockerfile, mascarar_resto=True,
+         acao="Use segredos de build (BuildKit --secret) ou injeção em tempo de execução; ENV/ARG ficam no histórico da imagem."),
+    dict(id="download-pipe-shell", categoria="CADEIA_SUPRIMENTOS", severidade="baixa", confianca="media",
+         titulo="Script baixado e executado direto (curl | sh)", cwe="CWE-494",
+         padrao=r"\b(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z)?sh\b",
+         extensoes=None, validar=_validar_dockerfile_ou_script,
+         acao="Baixe para arquivo, confira checksum/assinatura de versão fixa e só então execute."),
+
+    # CI/CD (GitHub Actions / GitLab CI)
+    dict(id="ci-injecao-expressao", categoria="CI_CD", severidade="alta", confianca="media",
+         titulo="Dado controlado por terceiros interpolado no workflow", cwe="CWE-94",
+         padrao=(r"\$\{\{\s*github\.(?:event\.(?:issue|pull_request|comment|review|review_comment|discussion|"
+                 r"head_commit|commits|pages|workflow_run)\b[^}]*|head_ref)\s*\}\}"),
+         extensoes={".yml", ".yaml"}, validar=_validar_ci_injecao,
+         acao="Passe o valor por env: e use \"$VAR\" entre aspas no script; título/branch/corpo de PR são controlados por quem abre o PR."),
+    dict(id="ci-pull-request-target", categoria="CI_CD", severidade="media", confianca="baixa",
+         titulo="Workflow disparado por pull_request_target", cwe="CWE-829",
+         padrao=r"^\s*-?\s*pull_request_target\b", extensoes={".yml", ".yaml"}, validar=_validar_workflow,
+         acao="Roda com segredos do repositório: nunca faça checkout/execução do código do PR nesse gatilho."),
+    dict(id="ci-permissoes-amplas", categoria="CI_CD", severidade="media", confianca="alta",
+         titulo="Token do workflow com permissão write-all", cwe="CWE-250",
+         padrao=r"^\s*permissions\s*:\s*write-all\b", extensoes={".yml", ".yaml"}, validar=_validar_workflow,
+         acao="Declare permissões mínimas por job (ex.: contents: read)."),
+    dict(id="ci-action-sem-pin", categoria="CI_CD", severidade="baixa", confianca="media",
+         titulo="Action de terceiros sem fixação por commit", cwe="CWE-829",
+         padrao=r"^\s*-?\s*uses\s*:\s*[\"']?(?!\./|docker://|actions/|github/)[^@\s\"']+@(?![0-9a-f]{40}\b)[^\s\"'#]+",
+         extensoes={".yml", ".yaml"}, validar=_validar_workflow,
+         acao="Fixe por SHA completo do commit (com comentário da versão); tags podem ser movidas pelo mantenedor."),
 ]
 
 ARQUIVOS_CREDENCIAIS = dict(
@@ -425,7 +738,6 @@ ARQUIVOS_CREDENCIAIS = dict(
     prefixos={".env."},
     sufixos={".pem", ".key", ".p12", ".pfx", ".jks", ".keystore"},
     nomes_padrao=re.compile(r"(?i)(^|/)(service[_-]?account[\w\-]*|id_rsa[\w\-]*)\.json$|(^|/)\.env\.[\w.\-]+$"),
-    validar=_validar_nao_fixture,
 )
 
 def compilar():
@@ -436,9 +748,32 @@ def compilar():
         verificados.append(verificado)
     return verificados
 
-def mascarar_trecho(categoria, linha, correspondencia):
+_PADROES_SEGREDO = None
+
+
+def _mascarar_segredos_em(trecho):
+    """Máscara de segurança: linha apontada por outra categoria (ex.: SQL) pode conter um segredo."""
+    global _PADROES_SEGREDO
+    if _PADROES_SEGREDO is None:
+        _PADROES_SEGREDO = [(re.compile(c["padrao"]), c) for c in PADROES if c["categoria"] == "SEGREDO"]
+    for regex, _ in _PADROES_SEGREDO:
+        for m in regex.finditer(trecho):
+            valores = [v for v in (list(m.groupdict().values()) + list(m.groups())) if v and len(v) >= 6]
+            for valor in valores:
+                trecho = trecho.replace(valor, "***MASCARADO***")
+    return trecho
+
+
+def mascarar_trecho(categoria, linha, correspondencia, mascarar_resto=False):
+    if mascarar_resto:
+        return (linha[:correspondencia.end()].strip() + " ***MASCARADO***")[:200]
     trecho = linha.strip()
     if categoria != "SEGREDO":
+        return _mascarar_segredos_em(trecho[:400])[:200]
+    nomeados = {k: v for k, v in correspondencia.groupdict().items() if v}
+    if nomeados:
+        for valor in nomeados.values():
+            trecho = trecho.replace(valor, "***MASCARADO***")
         return trecho[:200]
     valores = [g for g in correspondencia.groups() if g]
     alvo = max(valores, key=len) if valores else correspondencia.group(0)
@@ -452,15 +787,29 @@ def extensoes_arquivo(caminho):
     nome = caminho.name
     return {caminho.suffix.lower(), nome}
 
+PASTA_SUITE = Path(__file__).resolve().parent
+
+
 def deve_escanear(caminho, caminho_base):
-    posix = str(caminho).replace(os.sep, "/")
-    if "testes-vulnerabilidades/suite" in posix:
+    # Só arquivos regulares: symlink poderia ler fora do escopo (ex.: ~/.ssh) e jogar o
+    # conteúdo no relatório; FIFO/dispositivo bloquearia a leitura indefinidamente.
+    try:
+        if caminho.is_symlink() or not caminho.is_file():
+            return False
+        # Ignora apenas a suíte desta ferramenta (comparando o caminho real), nunca qualquer
+        # pasta com nome parecido: caso contrário, código malicioso colocado em
+        # "x/testes-vulnerabilidades/suite/" escaparia da varredura.
+        if PASTA_SUITE in caminho.resolve().parents:
+            return False
+        tamanho = caminho.stat().st_size
+    except OSError:
         return False
     if caminho.name in ARQUIVOS_IGNORADOS:
         return False
     if caminho.name.endswith((".min.js", ".min.css", ".map", ".svg", ".woff", ".woff2", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf")):
         return False
-    if caminho.stat().st_size > TAMANHO_MAXIMO:
+    if tamanho > TAMANHO_MAXIMO:
+        PULADOS["arquivos_grandes"].append(str(caminho))
         return False
     try:
         with open(caminho, "rb") as f:
@@ -490,17 +839,15 @@ def escanear_arquivo(caminho, relativo, verificados, achados):
                 categoria=check["categoria"], id=check["id"], titulo=check["titulo"],
                 severidade=check["severidade"], confianca=check["confianca"],
                 cwe=check.get("cwe", ""), arquivo=str(relativo), linha=n,
-                trecho=mascarar_trecho(check["categoria"], linha, m),
+                trecho=mascarar_trecho(check["categoria"], linha, m, check.get("mascarar_resto", False)),
                 acao=check["acao"],
             ))
 
 def checar_arquivos_credenciais(caminho, relativo, achados):
     nome = caminho.name
     posix = str(relativo).replace(os.sep, "/")
-    if ARQUIVOS_CREDENCIAIS["validar"] is not None:
-        m = re.match(r"x", "x")
-        if ARQUIVOS_CREDENCIAIS["validar"](m, nome, posix):
-            return
+    if _eh_fixture_ou_modelo(posix):
+        return
     motivo = None
     if nome in ARQUIVOS_CREDENCIAIS["nomes_exatos"]:
         motivo = "nome exato de credencial"
@@ -529,13 +876,77 @@ def coletar_arquivos(alvos):
             arquivos.append((p, p))
         elif p.is_dir():
             for raiz, diretorios, nomes in os.walk(p):
-                diretorios[:] = [d for d in diretorios if d not in DIRETORIOS_IGNORADOS]
+                diretorios[:] = [d for d in diretorios if d not in DIRETORIOS_IGNORADOS
+                                 and not (d in DIRETORIOS_SO_SE_VENV and (Path(raiz) / d / "pyvenv.cfg").exists())]
                 for nome in nomes:
                     caminho = Path(raiz) / nome
                     arquivos.append((caminho, caminho.relative_to(p)))
         else:
             print(f"aviso: alvo inexistente ignorado: {alvo}", file=sys.stderr)
     return arquivos
+
+def escanear_historico_git(alvo, verificados, achados, limite):
+    """Procura segredos nas linhas adicionadas do histórico git (somente leitura).
+
+    Segredos removidos do código continuam recuperáveis no histórico; este modo
+    aplica apenas os padrões da categoria SEGREDO e mascara os valores.
+    """
+    segredos = [c for c in verificados if c["categoria"] == "SEGREDO"]
+    try:
+        dentro = subprocess.run(["git", "-C", str(alvo), "rev-parse", "--is-inside-work-tree"],
+                                capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"aviso: histórico git não verificado ({e})", file=sys.stderr)
+        return 0
+    if dentro.returncode != 0 or dentro.stdout.strip() != "true":
+        print(f"aviso: {alvo} não é repositório git; histórico não verificado", file=sys.stderr)
+        return 0
+    comando = ["git", "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-C", str(alvo), "log", "--exclude=refs/agents/*", "--all", "-p", "--no-color", "--unified=0",
+               "--no-ext-diff", "--no-textconv", "--format=commit:%H", f"--max-count={limite}"]
+    try:
+        processo = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:
+        print(f"aviso: histórico git não verificado ({e})", file=sys.stderr)
+        return 0
+    commit, arquivo, commits = "", "", 0
+    vistos = set()
+    for bruta in processo.stdout:
+        linha = bruta.decode("utf-8", errors="replace").rstrip("\n")
+        if linha.startswith("commit:"):
+            commit, commits = linha[7:19], commits + 1
+            continue
+        if linha.startswith("+++ "):
+            arquivo = linha[6:] if linha.startswith("+++ b/") else linha[4:]
+            continue
+        if not linha.startswith("+"):
+            continue
+        if len(linha) > LINHA_MAXIMA_HISTORICO:
+            PULADOS["linhas_longas_historico"] += 1
+            continue
+        conteudo = linha[1:]
+        sufixo = Path(arquivo).suffix.lower()
+        for check in segredos:
+            if check["extensoes"] is not None and not ({sufixo, Path(arquivo).name} & set(check["extensoes"])):
+                continue
+            m = check["re"].search(conteudo)
+            if not m or (check.get("validar") and not check["validar"](m, conteudo, arquivo)):
+                continue
+            trecho = mascarar_trecho("SEGREDO", conteudo, m)
+            chave = (check["id"], arquivo, trecho)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            achados.append(dict(
+                categoria="SEGREDO", id=check["id"], titulo=check["titulo"] + " (histórico git)",
+                severidade=check["severidade"], confianca=check["confianca"], cwe=check.get("cwe", ""),
+                arquivo=f"git:{commit}:{arquivo}", linha=0, trecho=trecho,
+                acao=check["acao"] + " Remover do código não basta: o valor segue no histórico — rotacione.",
+            ))
+    _, erro = processo.communicate()
+    if processo.returncode not in (0, None):
+        print(f"aviso: git log terminou com erro; histórico verificado parcialmente: "
+              f"{erro.decode('utf-8', errors='replace').strip()[:200]}", file=sys.stderr)
+    return commits
 
 def carregar_permitidos(caminho_permitir):
     regras = []
@@ -584,6 +995,13 @@ def imprimir(achados, stats, ativo_cor):
     print(f"Arquivos analisados: {stats['arquivos']} | Achados: {stats['total']}"
           f" (alta: {stats['por_severidade']['alta']}, média: {stats['por_severidade']['media']},"
           f" baixa: {stats['por_severidade']['baixa']})")
+    pulos = stats.get("puladas") or {}
+    if pulos.get("arquivos_grandes"):
+        print(f"ATENÇÃO: {pulos['arquivos_grandes']} arquivo(s) acima de {pulos['limite_bytes']} bytes NÃO foram analisados "
+              f"(ex.: {', '.join(pulos['exemplos'][:3])}).")
+    if pulos.get("linhas_longas_historico"):
+        print(f"ATENÇÃO: {pulos['linhas_longas_historico']} linha(s) do histórico git acima de "
+              f"{pulos['limite_linha_historico']} caracteres NÃO foram analisadas.")
     print("Lembrete: cada item abaixo é um candidato a achado; confirme alcançabilidade antes de classificar.")
     print()
     atual = None
@@ -609,6 +1027,10 @@ def main():
                         help="código de saída 1 quando houver achado a partir desta severidade (padrão: alta)")
     parser.add_argument("--sem-cor", action="store_true", help="desativa cores ANSI")
     parser.add_argument("--resumo", action="store_true", help="imprime apenas o resumo, sem detalhes")
+    parser.add_argument("--historico-git", action="store_true",
+                        help="procura segredos também no histórico git de cada alvo (linhas adicionadas)")
+    parser.add_argument("--historico-limite", type=int, default=2000,
+                        help="máximo de commits lidos no histórico (padrão: 2000)")
     args = parser.parse_args()
 
     verificados = compilar()
@@ -623,6 +1045,12 @@ def main():
         escanear_arquivo(caminho, relativo, verificados, achados)
         checar_arquivos_credenciais(caminho, relativo, achados)
 
+    commits_historico = 0
+    if args.historico_git:
+        for alvo in args.alvos:
+            if Path(alvo).is_dir():
+                commits_historico += escanear_historico_git(alvo, verificados, achados, args.historico_limite)
+
     if categorias:
         achados = [a for a in achados if a["categoria"] in categorias]
     if regras:
@@ -635,7 +1063,13 @@ def main():
         por_severidade[a["severidade"]] += 1
         por_categoria[a["categoria"]] = por_categoria.get(a["categoria"], 0) + 1
 
-    stats = dict(arquivos=len(arquivos), total=len(achados), por_severidade=por_severidade, por_categoria=por_categoria)
+    stats = dict(arquivos=len(arquivos), total=len(achados), por_severidade=por_severidade, por_categoria=por_categoria,
+                 padroes=len(verificados) + 1, commits_historico=commits_historico if args.historico_git else None,
+                 puladas=dict(arquivos_grandes=len(PULADOS["arquivos_grandes"]),
+                              exemplos=PULADOS["arquivos_grandes"][:10],
+                              limite_bytes=TAMANHO_MAXIMO,
+                              linhas_longas_historico=PULADOS["linhas_longas_historico"],
+                              limite_linha_historico=LINHA_MAXIMA_HISTORICO))
 
     ativo_cor = sys.stdout.isatty() and not args.sem_cor
     if args.resumo:
@@ -646,7 +1080,7 @@ def main():
     if args.json:
         relatorio = dict(
             ferramenta="verificacao_estatica",
-            versao="1.0",
+            versao="1.1",
             gerado_em=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             alvos=args.alvos,
             resumo=stats,

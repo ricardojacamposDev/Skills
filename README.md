@@ -1,17 +1,17 @@
 # Skills — Manual de instalação e utilização
 
-Coleção de **17 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de testes de segurança.
+Coleção de **19 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de varredura de vulnerabilidades (código, segredos no histórico git, dependências, IaC/CI/CD e HTTP) com relatório consolidado.
 
 ## 1. Visão geral
 
 As skills se dividem em duas naturezas:
 
-- **Metodológicas** — orientam como investigar, decidir, implementar e validar: segurança, privacidade, arquitetura, testes, interface, desempenho, escala, entrega, legado, documentação, IA generativa, incidentes e cadeia de suprimentos.
-- **Executável** — `testes-vulnerabilidades` traz scripts prontos (scan estático e checagens HTTP) e especificações de casos dinâmicos para implementar na suíte do seu projeto.
+- **Metodológicas** — orientam como investigar, decidir, implementar e validar: segurança, segredos, infraestrutura, privacidade, arquitetura, testes, interface, desempenho, escala, entrega, legado, documentação, IA generativa, incidentes e cadeia de suprimentos.
+- **Executável** — `testes-vulnerabilidades` traz scripts prontos (varredura estática, segredos no histórico, dependências via OSV, checagens HTTP e um orquestrador com relatório único) e especificações de casos dinâmicos para implementar na suíte do seu projeto.
 
 | Grupo | Skills |
 |---|---|
-| Segurança | `seguranca-aplicacoes`, `pesquisa-vulnerabilidades`, `resposta-vulnerabilidades`, `testes-vulnerabilidades` |
+| Segurança | `seguranca-aplicacoes`, `pesquisa-vulnerabilidades`, `resposta-vulnerabilidades`, `testes-vulnerabilidades`, `gestao-segredos`, `seguranca-infraestrutura` |
 | Privacidade e IA | `privacidade-dados`, `recursos-ia-generativa` |
 | Qualidade e interface | `testes-qualidade-web`, `testes-e2e`, `interface-ux-acessibilidade` |
 | Arquitetura e evolução | `arquitetura-aplicacoes-web`, `codigo-legado-modernizacao`, `documentacao-tecnica` |
@@ -22,7 +22,7 @@ O índice completo, com critérios de escolha e combinações por tipo de trabal
 ## 2. Requisitos
 
 - [opencode](https://opencode.ai/docs/) instalado e funcional.
-- Python **3.9+** apenas para a bateria executável (somente biblioteca padrão; nenhuma dependência para instalar).
+- Python **3.9+** apenas para a bateria executável (somente biblioteca padrão; nenhuma dependência para instalar). `git` para procurar segredos no histórico.
 - Para as checagens HTTP: um ambiente local/staging controlado. Elas **não rodam** contra produção ou terceiros sem autorização explícita.
 
 ## 3. Instalação
@@ -40,7 +40,7 @@ cp -R skills-web/.opencode/skills/. meu-projeto/.opencode/skills/
 cp -R skills-web/.opencode/commands/. meu-projeto/.opencode/commands/
 ```
 
-A segunda cópia instala os atalhos `/tarefa` e `/revisao-final` (seções 5.2 e 5.3).
+A segunda cópia instala os atalhos `/tarefa`, `/revisao-final` e `/varredura-seguranca` (seções 5.2 a 5.4).
 
 Para instalar apenas um subconjunto (menos ruído para o agente):
 
@@ -70,7 +70,7 @@ As skills são texto versionado: para atualizar, `git pull` no clone e repetir a
 
 ### 3.4 Verificação e solução de problemas
 
-Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir os atalhos, digite `/` e procure `tarefa` e `revisao-final` na lista. Se alguma skill não aparecer:
+Abra uma **nova sessão** do opencode no projeto (skills são listadas no início da sessão) e peça: “quais skills estão disponíveis?”. Para conferir os atalhos, digite `/` e procure `tarefa`, `revisao-final` e `varredura-seguranca` na lista. Se alguma skill não aparecer:
 
 1. Confirme que o arquivo se chama exatamente `SKILL.md` (maiúsculas) dentro de `.opencode/skills/<nome>/` (ou de `~/.config/opencode/skills/<nome>/`, na instalação global).
 2. Confirme o frontmatter com `name` e `description` preenchidos.
@@ -102,6 +102,7 @@ O guia completo — índice por necessidade, seções “escolha pelo objetivo�
 - **Investigar e corrigir CVE:** `pesquisa-vulnerabilidades` → `resposta-vulnerabilidades` → `testes-qualidade-web` → `entrega-producao-observabilidade`.
 - **Validar segurança antes de release:** `testes-vulnerabilidades` (bateria) → triagem com `seguranca-aplicacoes` → correção com `resposta-vulnerabilidades`.
 - **Feature com IA generativa:** `arquitetura-aplicacoes-web` → `recursos-ia-generativa` + `privacidade-dados` → `testes-qualidade-web`.
+- **Varredura completa do sistema:** `testes-vulnerabilidades` → `gestao-segredos` / `seguranca-infraestrutura` / `seguranca-aplicacoes` (triagem por tipo) → `resposta-vulnerabilidades`.
 
 ### 5.2 Comando único: o agente escolhe as skills
 
@@ -113,15 +114,11 @@ Você não precisa saber quais skills existem nem o que cada termo técnico sign
 /tarefa quero um formulário de contato no site que envie as mensagens para o meu e-mail
 ```
 
-O atalho fica em `.opencode/commands/tarefa.md`, é instalado junto com as skills (seção 3) e envia ao agente o comando completo abaixo. Se você digitar só `/tarefa`, o agente pergunta o que você quer fazer.
+O atalho fica em `.opencode/commands/tarefa.md`, é instalado junto com as skills (seção 3) e envia ao agente o comando completo. Se você digitar só `/tarefa`, o agente pergunta o que você quer fazer.
 
-**Sem o atalho:** copie o comando abaixo e troque apenas o texto entre colchetes pela sua tarefa:
+**Sem o atalho:**
 
-```text
-Minha tarefa: [descreva com suas palavras o que você quer]
-
-Escolha sozinho as skills deste projeto que ajudam nessa tarefa e siga as orientações delas. Crie ou ajuste testes que comprovem que a solução funciona e rode-os; se houver código, rode também a varredura de segurança da skill testes-vulnerabilidades. Ainda não domino todos os termos técnicos: explique de forma simples. Pergunte só o que for essencial; no resto, escolha a opção mais segura e me avise. Nunca exponha senhas, chaves ou dados pessoais. Peça minha autorização antes de mexer em produção ou testar sites e servidores reais. Se eu pedir só análise ou plano, não altere arquivos. No final, resuma em linguagem simples: skills usadas, skills deste projeto que ficaram de fora e por quê (agrupe as que não têm relação com a tarefa), o que mudou, resultado dos testes e o que ficou pendente ou arriscado.
-```
+O texto completo do comando vive em um só lugar, [`tarefa.md`](./.opencode/commands/tarefa.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
 
 Exemplos de tarefa (valem para o atalho e para o comando):
 
@@ -147,17 +144,26 @@ Se quiser, acrescente contexto depois do atalho:
 /revisao-final é uma loja virtual; vou publicar na semana que vem
 ```
 
-O atalho fica em `.opencode/commands/revisao-final.md`. **Sem o atalho:** copie o comando abaixo (o texto entre colchetes é opcional):
+O atalho fica em `.opencode/commands/revisao-final.md`. **Sem o atalho:**
 
-```text
-Faça uma revisão final deste projeto antes da entrega. Contexto adicional (pode estar vazio): [opcional: o que você quiser acrescentar]
-
-Analise o projeto inteiro e escolha sozinho as skills deste projeto que se aplicam. Rode os testes que já existem (se não houver, diga quais faltam) e a varredura de segurança da skill testes-vulnerabilidades. Nesta etapa, não altere os arquivos do projeto: apenas verifique e relate. Ainda não domino todos os termos técnicos: explique de forma simples. Nunca exponha senhas, chaves ou dados pessoais, e não teste sites ou servidores reais sem minha autorização. Liste os problemas em ordem de prioridade (impede a entrega, importante, pode esperar), dizendo o que é cada um e por que importa. Diga quais skills deste projeto usou e quais ficaram de fora e por quê (agrupe as que não têm relação com o projeto). No final, pergunte quais problemas quero que você corrija; ao corrigir, crie testes que comprovem a correção.
-```
+O texto completo do comando vive em um só lugar, [`revisao-final.md`](./.opencode/commands/revisao-final.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
 
 Deixar a verificação só para o final encontra os problemas, mas alguns custam mais para corrigir tarde; por exemplo, mudar o jeito de guardar dados pessoais pode exigir refazer parte do código. Um meio-termo: use `/tarefa` nas partes mais sensíveis (login, pagamentos, dados pessoais) e `/revisao-final` antes de entregar.
 
-### 5.4 Regras de segurança herdadas
+### 5.4 Varredura de segurança: atalho `/varredura-seguranca`
+
+Procura vulnerabilidades no projeto inteiro sem alterar arquivos: código e configuração, senhas e chaves (inclusive as já apagadas que seguem no histórico do git), bibliotecas com falhas conhecidas, Docker/Kubernetes/Terraform e pipelines de CI. Separa problema real de falso positivo, lista por prioridade, diz o que a automação não cobre e só então pergunta o que corrigir.
+
+```text
+/varredura-seguranca
+/varredura-seguranca o ambiente de testes roda em http://localhost:3000 e está autorizado
+```
+
+Antes de consultar a internet sobre as bibliotecas (o banco público OSV recebe nome e versão de cada uma) ou de testar um endereço, o agente pede sua autorização. O resultado fica em `relatorio-seguranca/varredura.md`, pasta já ignorada pelo git. **Sem o atalho:**
+
+O texto completo do comando vive em um só lugar, [`varredura-seguranca.md`](./.opencode/commands/varredura-seguranca.md). Em clientes sem atalhos, abra esse arquivo, copie o texto depois do cabeçalho `---` e troque `$ARGUMENTS` pelo seu pedido (ou apague, se for opcional).
+
+### 5.5 Regras de segurança herdadas
 
 Todas as skills compartilham limites que devem ser respeitados nos pedidos:
 
@@ -170,19 +176,30 @@ Todas as skills compartilham limites que devem ser respeitados nos pedidos:
 ## 6. Bateria executável (`testes-vulnerabilidades`)
 
 ```bash
+# Varredura completa com relatório consolidado (relatorio-seguranca/varredura.md)
+python3 .opencode/skills/testes-vulnerabilidades/suite/varredura.py . --historico-git
+#   + dependências no OSV e HTTP, somente com permissão:
+python3 .opencode/skills/testes-vulnerabilidades/suite/varredura.py . --historico-git --osv \
+  --url http://localhost:3000 --autorizado
+
 # Estático — qualquer repositório, somente leitura, segredos mascarados
-python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_estatica.py . --json relatorio.json
+python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_estatica.py . --historico-git --json relatorio.json
+
+# Dependências — inventário local; --osv consulta vulnerabilidades conhecidas
+python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_dependencias.py . --osv
 
 # HTTP — apenas ambiente local/staging, exige declaração de autorização
 python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_http.py \
   --url http://localhost:3000 --autorizado --json http.json
 ```
 
-- **Estático:** ~45 padrões (segredos, injeção SQL/comando, XSS, SSRF, criptografia fraca, TLS desativado, sessão, traversal, desserialização, ReDoS, logs). Achado = candidato, nunca vulnerabilidade automática.
-- **HTTP:** apenas GET/OPTIONS não destrutivos; recusa alvo sem `--autorizado`, recusa host não local sem `--forcar-externo`, interrompe em 5xx.
-- **Casos dinâmicos:** 9 especificações em `suite/casos/` (IDOR/tenants, sessão, injeção, XSS, SSRF, upload/desserialização, concorrência, exposição em erros/logs, ReDoS) para implementar no framework de testes do projeto.
+- **Orquestrador (`varredura.py`):** roda as camadas permitidas e gera `varredura.md`/`.json` com achados normalizados, matriz OWASP Top 10 e a lista do que não foi coberto.
+- **Estático:** ~115 padrões (segredos, injeção SQL/comando/NoSQL/LDAP/SSTI, XSS, SSRF, redirect aberto, criptografia fraca, TLS desativado, sessão/CSRF, JWT, XXE, desserialização, traversal, IaC, Docker, Kubernetes, GitHub Actions, logs) e arquivos de credencial; `--historico-git` procura segredos já apagados. Achado = candidato, nunca vulnerabilidade automática.
+- **Dependências:** lockfiles de npm/yarn/pnpm, PyPI, Go, RubyGems, Packagist, Cargo, Gradle, NuGet e SBOM; `--osv` consulta vulnerabilidades conhecidas (envia nome/versão ao serviço público OSV).
+- **HTTP:** apenas GET/OPTIONS não destrutivos; cabeçalhos e qualidade da CSP, cookies, CORS, TLS, HTTP→HTTPS, arquivos/endpoints expostos, redirect aberto; recusa alvo sem `--autorizado`, recusa host fora de loopback/rede privada sem `--forcar-externo`, interrompe em 5xx.
+- **Casos dinâmicos:** 12 especificações em `suite/casos/` (IDOR/tenants, sessão, injeção, XSS, SSRF, upload/desserialização, concorrência, exposição em erros/logs, ReDoS, abuso de API/lógica de negócio, XXE/SSTI, prompt injection) para implementar no framework de testes do projeto.
 - **CI:** código de saída 1 a partir de `--falhar-em alta|media|baixa` (padrão `alta`); falsos positivos revisados via `--permitir`.
-- **Testes da bateria:** `python3 .opencode/skills/testes-vulnerabilidades/suite/test_verificacao_estatica.py` confere a detecção de injeção de SQL e o desempenho; rode após alterar padrões. A verificação é linha a linha: SQL em string de várias linhas não é detectado.
+- **Testes da bateria:** `test_verificacao_estatica.py`, `test_verificacao_dependencias.py`, `test_verificacao_http.py` e `test_varredura.py` em `suite/` (sem rede externa); rode após alterar padrões ou checagens. A verificação estática é linha a linha: SQL em string de várias linhas não é detectado.
 
 Detalhes de uso, allowlist e integração: [`suite/README.md`](./.opencode/skills/testes-vulnerabilidades/suite/README.md).
 
@@ -214,7 +231,8 @@ Convenções deste repositório (mantenha-as para consistência):
 4. Referências cruzadas apenas para skills existentes; escopo complementar, nunca contraditório com outra skill.
 5. Linguagem baseada em evidência: diferencie confirmado/hipótese/fragilidade/falso positivo; exija autorização para teste ativo; dados sintéticos; sem segredos em exemplos.
 6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). Os comandos das seções 5.2 e 5.3 não precisam mudar: eles não listam skills pelo nome.
-7. O texto de cada comando existe em três lugares: este README (seções 5.2 e 5.3), [`.opencode/skills/README.md`](./.opencode/skills/README.md) e o arquivo do atalho ([`tarefa.md`](./.opencode/commands/tarefa.md) ou [`revisao-final.md`](./.opencode/commands/revisao-final.md), em `.opencode/commands/`). Ao alterar um comando, mantenha os três iguais e repita a cópia para a instalação global, se usar uma (seção 3.3).
+7. O texto de cada comando vive só no arquivo do atalho ([`tarefa.md`](./.opencode/commands/tarefa.md), [`revisao-final.md`](./.opencode/commands/revisao-final.md) ou [`varredura-seguranca.md`](./.opencode/commands/varredura-seguranca.md), em `.opencode/commands/`); os READMEs apenas apontam para ele. Ao alterar um comando, edite só esse arquivo e repita a cópia para a instalação global, se usar uma (seção 3.3).
+8. Antes de commitar, rode `python3 .opencode/skills/verificar_skills.py`: ele confere frontmatter, referências cruzadas, índices, links, contagens e a regra de fonte única dos comandos.
 
 ## 9. Limitações
 
