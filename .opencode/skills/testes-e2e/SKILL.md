@@ -26,37 +26,30 @@ Teste poucos fluxos críticos completos, em ambiente reproduzível e com dados c
 
 ## 3. Projete casos estáveis
 
-- Cada teste deve preparar e limpar seu próprio estado; não dependa de ordem, de dados criados por outro teste ou de estado residual.
-- Use um único ator/usuário por teste, salvo quando o cenário exigir interação entre papéis; nesse caso, crie e limpe todos os atores.
-- Separe autenticação reutilizável (storage state/sessão salva) da criação de dados específicos do cenário.
-- Evite aleatoriedade não controlada; se necessário, use seed fixa e registre-a para reproduzir falhas.
+As práticas gerais de teste confiável — estado próprio e limpo por teste, sem dependência de ordem, relógio ou rede instável, seletores semânticos, esperas por condição observável, seed registrada, diagnóstico sem enfraquecer asserções — seguem `testes-qualidade-web` (seções 3 e 4) e valem aqui integralmente. Abaixo, só o que é específico de E2E:
+
+- Um único ator por teste, salvo quando o cenário exige interação entre papéis; nesse caso, crie e limpe todos os atores.
+- Separe autenticação reutilizável (storage state/sessão salva) da criação de dados do cenário.
 - Priorize fluxos de leitura para smoke tests e fluxos de escrita para regressão; marque testes lentos ou instáveis para execução separada.
-- Não combine muitas asserções não relacionadas em um mesmo teste; falha deve apontar causa clara.
-
-## 4. Escreva testes robustos
-
-- Use seletores semânticos e acessíveis (papel, nome acessível, texto visível, rótulo) antes de seletores internos; recorra a atributos de teste apenas quando não houver alternativa estável.
-- Aguarde condições observáveis (elemento visível/habilitado, resposta de rede, estado da URL, persistência) em vez de pausas fixas.
-- Interaja como usuário: clique, digite, navegue por teclado quando o fluxo exigir; evite manipular estado interno diretamente, salvo em setup.
-- Capture evidências em falha: screenshot, vídeo curto, trace e logs de rede/console com segredos e dados pessoais mascarados.
-- Teste responsividade em viewports relevantes; não assuma apenas desktop.
+- Uma falha deve apontar causa clara: não junte muitas asserções não relacionadas num mesmo teste.
+- Interaja como usuário (clique, digite, navegue por teclado quando o fluxo exigir); manipule estado interno apenas no setup.
 - Para formulários, valide erros de campo, preservação de valores, submissão duplicada e estados de carregamento.
 - Para autenticação e autorização, teste login, logout, expiração de sessão, acesso negado e isolamento entre usuários/tenants.
-- Mantenha page objects ou helpers apenas quando reduzirem duplicação real; não crie abstrações que escondam a intenção do teste.
+- Teste responsividade nos viewports relevantes; não assuma apenas desktop.
+- Capture evidências em falha (screenshot, vídeo curto, trace, logs de rede/console) com segredos e dados pessoais mascarados.
+- Page objects ou helpers só quando reduzirem duplicação real, sem esconder a intenção do teste.
 
-## 5. Execute, diagnostique e mantenha
+## 4. Execute, diagnostique e mantenha
 
-1. Rode primeiro o teste mais focado disponível; amplie a suíte apenas quando a superfície afetada justificar.
-2. Reproduza a falha localmente antes de alterar código ou teste; não enfraqueça asserções para "fazer passar".
-3. Classifique a causa: defeito de produto, fragilidade do teste, problema de ambiente ou flakiness.
-4. Se o teste estiver instável, investigue sincronização, dados compartilhados, animações, rede e ordem de execução; registre a causa e o plano de correção.
-5. Corrija a causa raiz e adicione regressão proporcional ao defeito.
-6. Rode testes relacionados e, quando justificado, a suíte E2E completa; reporte falhas preexistentes separadamente.
-7. Revise periodicamente testes lentos, duplicados ou obsoletos; remova o que não agrega valor.
+1. Rode primeiro o teste mais focado e amplie a suíte só quando a superfície afetada justificar; reproduza a falha localmente antes de alterar código ou teste.
+2. Classifique a causa: defeito de produto, fragilidade do teste, problema de ambiente ou flakiness.
+3. Se instável, investigue sincronização, dados compartilhados, animações, rede e ordem de execução; registre causa e plano de correção.
+4. Corrija a causa raiz com regressão proporcional; reporte falhas preexistentes separadamente.
+5. Revise periodicamente testes lentos, duplicados ou obsoletos e remova o que não agrega valor.
 
 Não declare validação bem-sucedida se testes foram ignorados, instáveis ou não executados.
 
-## 6. Integre a CI com controle de custo
+## 5. Integre a CI com controle de custo
 
 - Execute smoke E2E em todo pull request e a suíte completa em pipeline noturno ou antes de release, conforme tempo e custo.
 - Paralelize por arquivo/fluxo quando o framework suportar, mantendo isolamento de dados.
@@ -65,7 +58,7 @@ Não declare validação bem-sucedida se testes foram ignorados, instáveis ou n
 - Armazene artefatos de falha por tempo limitado e com acesso controlado; revise conteúdo antes de compartilhar.
 - Meça tempo, taxa de sucesso e flakiness; use métricas para decidir quais testes manter, otimizar ou remover.
 
-## 7. Segurança, privacidade e dados
+## 6. Segurança, privacidade e dados
 
 - Use contas e dados sintéticos; masque tokens, cookies, cabeçalhos de autorização e informação pessoal em logs, traces e screenshots.
 - Não execute E2E contra produção ou sistemas de terceiros sem autorização explícita e escopo definido.

@@ -63,6 +63,24 @@ class TesteVerificador(unittest.TestCase):
                        comandos={"x.md": cmd})
         self.assertTrue(any("copia texto" in x for x in p))
 
+    def test_script_citado_inexistente(self):
+        p = self.rodar(skills={"alfa-um": skill("alfa-um", "rode `python3 .opencode/skills/alfa-um/x.py`")},
+                       readme_skills="`alfa-um`", readme_raiz="`alfa-um`")
+        self.assertTrue(any("script citado não existe" in x for x in p))
+
+    def test_orcamento_de_tamanho(self):
+        p = self.rodar(skills={"alfa-um": skill("alfa-um", "x" * (vs.ORCAMENTO_BYTES + 10))},
+                       readme_skills="`alfa-um`", readme_raiz="`alfa-um`")
+        self.assertTrue(any("orçamento" in x for x in p))
+
+    def test_trava_de_seguranca_removida(self):
+        p = self.rodar(skills={"gestao-segredos": skill("gestao-segredos", "texto sem as regras")},
+                       readme_skills="`gestao-segredos`", readme_raiz="`gestao-segredos`")
+        self.assertEqual(sum("trava de segurança ausente" in x for x in p), 2)
+        ok = self.rodar(skills={"gestao-segredos": skill("gestao-segredos", "Nunca copie o valor. Não rotacione sozinho.")},
+                        readme_skills="`gestao-segredos`", readme_raiz="`gestao-segredos`")
+        self.assertFalse(any("trava" in x for x in ok))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -8,6 +8,10 @@ Checagens:
   - índice: toda skill aparece na tabela de .opencode/skills/README.md e no README raiz;
   - links relativos de arquivos .md existem;
   - contagens declaradas ("N skills", "~N padrões") batem com a realidade;
+  - scripts citados (`.opencode/skills/.../x.py`) existem;
+  - orçamento de tamanho: SKILL.md acima de ORCAMENTO_BYTES é sinal de que precisa ser enxugado;
+  - travas de segurança: regras que não podem sumir de skills críticas (ex.: exigir autorização em
+    testes ativos, nunca copiar valor de segredo) continuam presentes no texto;
   - comandos (.opencode/commands/*.md) têm `description` e o texto deles não está copiado nos READMEs
     (fonte única: o arquivo do comando).
 
@@ -22,6 +26,23 @@ from pathlib import Path
 
 NOME_OK = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CRASES = re.compile(r"`([a-z0-9]+(?:-[a-z0-9]+)+)`")
+ORCAMENTO_BYTES = 9000
+CAMINHO_SCRIPT = re.compile(r"\.opencode/skills/[\w./-]+?\.py")
+
+# skill -> [(regex, o que a regra garante)]. Se alguém "enxugar" a skill e perder a regra, o teste acusa.
+TRAVAS = {
+    "testes-vulnerabilidades": [(r"(?i)autoriza", "exigir autorização para HTTP/testes ativos"),
+                                (r"(?i)nunca reproduza o valor", "nunca reproduzir valor de segredo")],
+    "pesquisa-vulnerabilidades": [(r"(?i)autoriza", "exigir autorização antes de teste ativo")],
+    "seguranca-aplicacoes": [(r"(?i)autoriza", "exigir autorização para teste ativo")],
+    "seguranca-infraestrutura": [(r"(?i)autoriza", "exigir autorização para consultar ambiente em execução")],
+    "escalabilidade-resiliente": [(r"(?i)autoriza", "exigir autorização para teste de carga")],
+    "testes-e2e": [(r"(?i)autoriza", "não rodar E2E em produção sem autorização"),
+                   (r"(?i)sint[ée]tic", "dados sintéticos")],
+    "gestao-segredos": [(r"(?i)nunca copie o valor", "nunca copiar valor de segredo"),
+                        (r"(?i)n[ãa]o rotacione", "rotação só com confirmação")],
+    "resposta-incidentes": [(r"(?i)evid[êe]ncias", "preservar evidências")],
+}
 LINK = re.compile(r"\]\((?!https?://|#|mailto:)([^)\s#]+)")
 
 
@@ -82,6 +103,18 @@ def verificar(raiz):
             parecida = difflib.get_close_matches(ref, skills, n=1, cutoff=0.8)
             if parecida:
                 problemas.append(f"{arq.relative_to(raiz)}: referência `{ref}` não existe; quis dizer `{parecida[0]}`?")
+
+    # scripts citados, orçamento e travas
+    for nome, arq in skills.items():
+        texto = arq.read_text(encoding="utf-8")
+        for caminho in sorted(set(CAMINHO_SCRIPT.findall(texto))):
+            if not (raiz / caminho).exists():
+                problemas.append(f"{arq.relative_to(raiz)}: script citado não existe: {caminho}")
+        if len(texto.encode("utf-8")) > ORCAMENTO_BYTES:
+            problemas.append(f"{arq.relative_to(raiz)}: {len(texto.encode('utf-8'))} bytes (orçamento {ORCAMENTO_BYTES}); enxugue")
+        for regex, garantia in TRAVAS.get(nome, []):
+            if not re.search(regex, texto):
+                problemas.append(f"{arq.relative_to(raiz)}: trava de segurança ausente — {garantia}")
 
     # índices
     textos = {}
