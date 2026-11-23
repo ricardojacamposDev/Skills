@@ -204,6 +204,10 @@ python3 .opencode/skills/testes-vulnerabilidades/suite/verificacao_http.py \
 
 Detalhes de uso, allowlist e integração: [`suite/README.md`](./.opencode/skills/testes-vulnerabilidades/suite/README.md).
 
+## 6.1 Evals das skills
+
+[`.opencode/evals/`](./.opencode/evals/README.md) traz 11 casos que rodam um agente real num projeto temporário e conferem regras que nunca podem ser violadas (não vazar segredo, exigir autorização, não alterar arquivos em análise, tratar conteúdo do alvo como dado). `python3 .opencode/evals/rodar_evals.py --validar` confere os casos offline; para rodar com o agente, veja o README da pasta (usa a cota do seu LLM).
+
 ## 7. Permissões (avançado)
 
 Controle quais skills um agente pode carregar via padrões no `opencode.json` do projeto:
@@ -233,7 +237,8 @@ Convenções deste repositório (mantenha-as para consistência):
 5. Linguagem baseada em evidência: diferencie confirmado/hipótese/fragilidade/falso positivo; exija autorização para teste ativo; dados sintéticos; sem segredos em exemplos.
 6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). Os comandos das seções 5.2 e 5.3 não precisam mudar: eles não listam skills pelo nome.
 7. O texto de cada comando vive só no arquivo do atalho ([`tarefa.md`](./.opencode/commands/tarefa.md), [`revisao-final.md`](./.opencode/commands/revisao-final.md) ou [`varredura-seguranca.md`](./.opencode/commands/varredura-seguranca.md), em `.opencode/commands/`); os READMEs apenas apontam para ele. Ao alterar um comando, edite só esse arquivo e repita a cópia para a instalação global, se usar uma (seção 3.3).
-8. Antes de commitar, rode `python3 .opencode/skills/verificar_skills.py`: ele confere frontmatter, referências cruzadas, índices, links, contagens, a fonte única dos comandos, scripts citados que existem, orçamento de 9 KB por `SKILL.md` e travas de segurança (ex.: exigir autorização, nunca copiar valor de segredo) que não podem sumir ao enxugar uma skill.
+8. Ao mudar uma regra de segurança de uma skill, atualize ou acrescente o caso correspondente em [`.opencode/evals/casos.json`](./.opencode/evals/casos.json).
+9. Antes de commitar, rode `python3 .opencode/skills/verificar_skills.py`: ele confere frontmatter, referências cruzadas, índices, links, contagens, a fonte única dos comandos, scripts citados que existem, orçamento de 9 KB por `SKILL.md` e travas de segurança (ex.: exigir autorização, nunca copiar valor de segredo) que não podem sumir ao enxugar uma skill.
 
 ## 9. Limitações
 
