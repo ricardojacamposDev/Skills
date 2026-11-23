@@ -61,4 +61,4 @@ Trate o modelo como um componente probabilístico dentro da aplicação, não co
 
 Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
 
-Para modelagem de ameaças e controles de acesso, use `seguranca-aplicacoes`; para dados pessoais, `privacidade-dados`; para automatizar as avaliações, `testes-qualidade-web`.
+Para agentes que operam sobre código e sistemas (skills, MCP, permissões), use `seguranca-agentes-ia`; para modelagem de ameaças e controles de acesso, `seguranca-aplicacoes`; para dados pessoais, `privacidade-dados`; para automatizar as avaliações, `testes-qualidade-web`.

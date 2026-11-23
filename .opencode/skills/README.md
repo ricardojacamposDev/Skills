@@ -23,6 +23,11 @@ O nome da skill também pode ser combinado com uma tarefa concreta. Em vez de pe
 | Encontrar e tratar segredos expostos | [`gestao-segredos`](./gestao-segredos/SKILL.md) | Há chave/senha no código ou no histórico, credencial vazada, ou é preciso definir cofre, variáveis de ambiente e prevenção. |
 | Projetar ou revisar login, OAuth/OIDC, sessão, JWT, MFA e recuperação | [`autenticacao-identidade`](./autenticacao-identidade/SKILL.md) | A tarefa envolve login/logout, tokens, refresh, redirect URI, SSO, reset de senha, API keys ou identidade serviço a serviço. |
 | Endurecer o lado cliente (navegador) | [`seguranca-frontend`](./seguranca-frontend/SKILL.md) | A tarefa envolve XSS no DOM, CSP, tokens no navegador, scripts de terceiros, `postMessage` ou segredos em bundles. |
+| Proteger APIs, GraphQL e webhooks | [`seguranca-apis`](./seguranca-apis/SKILL.md) | A tarefa envolve endpoints, contratos OpenAPI/GraphQL, webhooks, limites de taxa, atribuição em massa ou autorização por objeto. |
+| Proteger a camada de dados e o isolamento entre tenants | [`seguranca-dados-persistencia`](./seguranca-dados-persistencia/SKILL.md) | A tarefa envolve esquemas, RLS, papéis e permissões de banco, migrações, backups ou dados sensíveis/multitenant. |
+| Usar criptografia corretamente | [`criptografia-aplicada`](./criptografia-aplicada/SKILL.md) | A tarefa envolve cifrar, assinar, hash, chaves, aleatórios, certificados ou revisar código com AES/RSA/HMAC. |
+| Modelar ameaças de um sistema ou mudança | [`modelagem-ameacas`](./modelagem-ameacas/SKILL.md) | Há funcionalidade, integração ou mudança de fronteira/identidade/dados a desenhar ou a justificar em revisão de arquitetura de segurança. |
+| Usar agentes, skills e MCP com segurança | [`seguranca-agentes-ia`](./seguranca-agentes-ia/SKILL.md) | A tarefa envolve instalar ou criar skills, MCP ou plugins, permissões de agente ou deixá-lo ler conteúdo de terceiros. |
 | Revisar infraestrutura, nuvem e contêineres | [`seguranca-infraestrutura`](./seguranca-infraestrutura/SKILL.md) | A tarefa envolve Terraform/IaC, Docker, Kubernetes, IAM, rede exposta, buckets, TLS ou servidores web. |
 | Comandar resposta a incidente ou postmortem | [`resposta-incidentes`](./resposta-incidentes/SKILL.md) | Há interrupção, vazamento ou suspeita de comprometimento em andamento, ou preparo de playbook, escalonamento e postmortem. |
 | Prevenir riscos na cadeia de suprimentos | [`supply-chain-construtor`](./supply-chain-construtor/SKILL.md) | A tarefa envolve adicionar/atualizar dependências, pipeline de build, publicação/consumo de artefatos, pinning, SBOM ou proveniência. |
@@ -55,6 +60,14 @@ Exemplos:
 
 - “Use `autenticacao-identidade` para revisar o login com o provedor OIDC: redirect URI, PKCE, validação do JWT e logout.”
 - “Use `seguranca-frontend` para revisar onde guardamos os tokens e se o componente de comentários permite XSS.”
+
+Outras skills de aprofundamento: `modelagem-ameacas` (antes de construir: fluxo de dados, STRIDE, requisitos e riscos aceitos), `seguranca-apis` (autorização por objeto, atribuição em massa, limites, webhooks), `seguranca-dados-persistencia` (RLS, privilégio mínimo, migrações, backups), `criptografia-aplicada` (primitivas, chaves, nonce, TLS) e `seguranca-agentes-ia` (skills, MCP, injeção indireta, permissões e confirmação). Usar o agente de código também é uma superfície de ataque: ao instalar uma skill ou servidor MCP de terceiros, leia o conteúdo antes e fixe a versão.
+
+Exemplos:
+
+- “Use `modelagem-ameacas` para modelar o fluxo de upload e compartilhamento de documentos antes de implementarmos.”
+- “Use `seguranca-apis` para revisar as rotas de pedidos: autorização por objeto, campos aceitos e webhook de pagamento.”
+- “Use `seguranca-agentes-ia` para avaliar esta configuração de MCP antes de eu instalar.”
 
 ### Pesquisa e resposta a vulnerabilidades
 
@@ -163,6 +176,8 @@ Quando algo já quebrou, use `resposta-incidentes` para comandar o evento: papé
 | Credencial vazada | `gestao-segredos` (contenção e rotação) → `resposta-incidentes` (se houver uso indevido) → `testes-vulnerabilidades` (confirmar varredura limpa) |
 | Revisar login e sessão | `autenticacao-identidade` → `seguranca-frontend` (tokens no navegador) → `testes-vulnerabilidades` (caso `autenticacao-sessao`) → `testes-e2e` (fluxos de login e acesso negado) |
 | Endurecer o front-end | `seguranca-frontend` → `testes-vulnerabilidades` (HTTP: CSP e cabeçalhos, caso `saida-xss`) → `interface-ux-acessibilidade` |
+| Desenhar uma funcionalidade sensível | `modelagem-ameacas` → `seguranca-apis` + `seguranca-dados-persistencia` (+ `autenticacao-identidade`, `criptografia-aplicada` conforme o caso) → `testes-vulnerabilidades` |
+| Instalar skill, MCP ou plugin de terceiros | `seguranca-agentes-ia` → `supply-chain-construtor` → `gestao-segredos` (credenciais do agente) |
 | Revisar infraestrutura antes do deploy | `seguranca-infraestrutura` → `supply-chain-construtor` (imagens) → `entrega-producao-observabilidade` |
 
 As combinações são sugestões, não uma sequência obrigatória. Se a tarefa for pequena, use apenas a skill necessária.

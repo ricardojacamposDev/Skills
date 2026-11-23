@@ -21,7 +21,7 @@ Leia código, configuração, testes e documentação relevantes. Para uma funci
 
 ## 2. Modele ameaças
 
-Use STRIDE ou método adotado pelo projeto sem transformar categorias em achados automáticos. Para cada cenário relevante, descreva:
+Use STRIDE ou método adotado pelo projeto sem transformar categorias em achados automáticos (para um modelo completo, com diagrama e requisitos, use `modelagem-ameacas`). Para cada cenário relevante, descreva:
 
 - ator e capacidade necessária;
 - pré-condições e entrada controlada;
@@ -45,6 +45,7 @@ Considere abuso de lógica, IDOR/BOLA, escalada de privilégio, confusão entre 
 - Aplique deny-by-default e verifique permissão no servidor para cada ação e objeto.
 - Derive tenant e identidade de contexto confiável, não de parâmetros arbitrários.
 - Teste acesso horizontal e vertical negado, inclusive em endpoints assíncronos e exports.
+- Para APIs em profundidade (BOLA/BFLA, atribuição em massa, limites, webhooks), use `seguranca-apis`; para isolamento no banco e RLS, `seguranca-dados-persistencia`.
 
 ### Entradas, saídas e comandos
 
@@ -55,7 +56,7 @@ Considere abuso de lógica, IDOR/BOLA, escalada de privilégio, confusão entre 
 
 ### Criptografia e segredos
 
-- Use bibliotecas e construções padrão; não crie criptografia própria.
+- Use bibliotecas e construções padrão; não crie criptografia própria (detalhes em `criptografia-aplicada`).
 - Gere valores com CSPRNG, proteja chaves fora do código e defina rotação.
 - Não registre segredos, tokens ou dados sensíveis. Se encontrar segredo real, não o reproduza no relatório.
 
