@@ -61,4 +61,6 @@ Reforme sistemas em produção mudando o comportamento apenas de propósito, com
 5. **Dados e contratos** — migrações, compatibilidade e verificação de corretude.
 6. **Estado e pendências** — progresso, dívidas e próximo passo recomendado.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para estratégia de testes, use `testes-qualidade-web`; para limites e decisões arquiteturais, `arquitetura-aplicacoes-web`; para rollout, reversão e monitoramento, `entrega-producao-observabilidade`.

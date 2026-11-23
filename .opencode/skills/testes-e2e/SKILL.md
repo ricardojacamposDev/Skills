@@ -74,4 +74,6 @@ Não declare validação bem-sucedida se testes foram ignorados, instáveis ou n
 5. **Execução** — comandos, resultado, tempo e falhas/limitações.
 6. **Risco residual** — fluxos ou estados ainda não validados.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para seleção de camadas de teste, use `testes-qualidade-web`; para interfaces e acessibilidade, `interface-ux-acessibilidade`; para desempenho de páginas e fluxos, `eficiencia-computacional`; para segurança de fluxos e autorização, `seguranca-aplicacoes`.

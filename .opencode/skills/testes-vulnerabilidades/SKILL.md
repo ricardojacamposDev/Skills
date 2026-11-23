@@ -68,4 +68,6 @@ Segredos detectados: informe apenas localização e tipo, recomende rotação pe
 4. **Correções e reteste** — mudanças, teste de regressão e resultado antes/depois.
 5. **Risco residual** — classes não cobertas pela bateria (seção “Não coberto” do `varredura.md`) e áreas não examinadas.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para investigar uma CVE específica, use `pesquisa-vulnerabilidades`; para priorizar e implantar correções, `resposta-vulnerabilidades`; para modelagem de ameaças e revisão estrutural de controles, `seguranca-aplicacoes`; para segredos encontrados, `gestao-segredos`; para achados de IaC, contêineres e nuvem, `seguranca-infraestrutura`; para integrar os casos dinâmicos à suíte existente, `testes-qualidade-web`.

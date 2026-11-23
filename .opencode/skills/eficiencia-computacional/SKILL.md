@@ -67,4 +67,6 @@ Apresente, de forma concisa:
 5. **Validação** — testes executados e riscos remanescentes.
 6. **Próximo passo e segurança** — informe riscos remanescentes, mitigação recomendada e próximos passos proporcionais ao ganho e à gravidade.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Se não houver dados para medir, entregue um plano mínimo de instrumentação e não invente percentuais de melhoria. Para gargalos de capacidade, filas ou autoscaling, complemente com `escalabilidade-resiliente`.

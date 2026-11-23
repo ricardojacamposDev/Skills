@@ -81,4 +81,6 @@ Meça throughput sustentável, saturação, p95/p99, erros, filas, recuperação
 5. **Rollout e observabilidade** — métricas, alertas e rollback.
 6. **Custo e riscos residuais**.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Antes de otimizar o caminho quente, use `eficiencia-computacional`; se a escala ampliar risco de abuso ou vazamento entre tenants, inclua `seguranca-aplicacoes`.

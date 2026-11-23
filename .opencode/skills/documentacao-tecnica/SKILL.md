@@ -63,4 +63,6 @@ Numere sequencialmente, nunca reescreva um ADR aceito — supra-o com um novo e 
 4. **Manutenção** — dono, gatilho de atualização e pendências marcadas.
 5. **Riscos** — informações incertas, desatualizadas ou ausentes.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para decidir o que merece registro de decisão, use `arquitetura-aplicacoes-web`; para procedimentos de operação e alertas, `entrega-producao-observabilidade`; para validação de exemplos e contratos, `testes-qualidade-web`.

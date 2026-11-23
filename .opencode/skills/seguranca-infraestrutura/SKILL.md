@@ -74,4 +74,6 @@ Grande parte dos incidentes começa na configuração, não no código: bucket p
 4. **Correções** — diffs de IaC/manifests propostos ou aplicados, com plano e rollback.
 5. **Riscos residuais** — drift não verificado, contas fora do escopo, exceções aceitas.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para segredos encontrados na infraestrutura, use `gestao-segredos`; para imagens, pipelines e proveniência, `supply-chain-construtor`; para a varredura executável, `testes-vulnerabilidades`; para deploy, alertas e rollback, `entrega-producao-observabilidade`; para limites e capacidade, `escalabilidade-resiliente`.

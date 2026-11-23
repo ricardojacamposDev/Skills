@@ -60,4 +60,6 @@ Objetivo: restaurar o serviço com segurança e proteger dados, produzindo um re
 5. **Ações preventivas** — priorizadas, com responsável e prazo.
 6. **Comunicações** — audiences, momentos e próximos avisos devidos.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para correção do finding de segurança que originou o evento, use `resposta-vulnerabilidades`; para investigação defensiva do achado, `pesquisa-vulnerabilidades`; para alertas, smoke tests e rollback na recuperação, `entrega-producao-observabilidade`; para obrigações de dados pessoais, `privacidade-dados`; para credencial vazada (contenção e rotação), `gestao-segredos`.

@@ -58,4 +58,6 @@ Não execute testes de carga, falhas ou scanners intrusivos em produção sem es
 4. **Validação** — testes, smoke checks e resultado observado.
 5. **Rollback e riscos residuais** — procedimento e limitações.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para dimensionamento, filas ou resiliência sob carga, complemente com `escalabilidade-resiliente`; para correções de vulnerabilidade, use `resposta-vulnerabilidades`; para incidente em andamento, `resposta-incidentes`; para pinning, SBOM e proveniência de builds, `supply-chain-construtor`; para runbooks e ADRs, `documentacao-tecnica`; para segurança de IaC, contêineres e nuvem, `seguranca-infraestrutura`.

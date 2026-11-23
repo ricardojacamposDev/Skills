@@ -71,4 +71,6 @@ Avalie impacto, alcançabilidade, exposição, privilégios necessários, intera
 6. **Conclusão** — confirmada, potencial, falso positivo ou inconclusiva, com confiança.
 7. **Recomendações** — correção e mitigação priorizadas.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para executar correção, contenção e validação, use `resposta-vulnerabilidades`. Para revisar controles estruturais além de um finding, use `seguranca-aplicacoes`. Para política preventiva de dependências, SBOM e proveniência, use `supply-chain-construtor`; para bateria padronizada de testes, `testes-vulnerabilidades`.

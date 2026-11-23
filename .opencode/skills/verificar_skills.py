@@ -12,6 +12,9 @@ Checagens:
   - orçamento de tamanho: SKILL.md acima de ORCAMENTO_BYTES é sinal de que precisa ser enxugado;
   - travas de segurança: regras que não podem sumir de skills críticas (ex.: exigir autorização em
     testes ativos, nunca copiar valor de segredo) continuam presentes no texto;
+  - exemplo de entrega: cada skill tem `exemplo-entrega.md` com os mesmos rótulos, na mesma ordem, da
+    lista de "Formato de entrega" (muda o formato, o exemplo precisa acompanhar), dentro do limite de
+    tamanho, e o SKILL.md aponta para ele;
   - comandos (.opencode/commands/*.md) têm `description` e o texto deles não está copiado nos READMEs
     (fonte única: o arquivo do comando).
 
@@ -27,6 +30,9 @@ from pathlib import Path
 NOME_OK = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CRASES = re.compile(r"`([a-z0-9]+(?:-[a-z0-9]+)+)`")
 ORCAMENTO_BYTES = 9000
+ORCAMENTO_EXEMPLO = 3500
+SECAO_FORMATO = re.compile(r"## Formato de entrega\n(.*?)(?:\n\n[A-Z`]|\Z)", re.S)
+ROTULO = re.compile(r"^\d+\.\s+\*\*(.+?)\*\*", re.M)
 CAMINHO_SCRIPT = re.compile(r"\.opencode/skills/[\w./-]+?\.py")
 
 # skill -> [(regex, o que a regra garante)]. Se alguém "enxugar" a skill e perder a regra, o teste acusa.
@@ -115,6 +121,27 @@ def verificar(raiz):
         for regex, garantia in TRAVAS.get(nome, []):
             if not re.search(regex, texto):
                 problemas.append(f"{arq.relative_to(raiz)}: trava de segurança ausente — {garantia}")
+
+    # exemplo de entrega
+    for nome, arq in skills.items():
+        texto = arq.read_text(encoding="utf-8")
+        m = SECAO_FORMATO.search(texto)
+        rotulos = ROTULO.findall(m.group(1)) if m else []
+        if not rotulos:
+            problemas.append(f"{arq.relative_to(raiz)}: seção 'Formato de entrega' sem lista numerada de rótulos")
+            continue
+        exemplo = arq.parent / "exemplo-entrega.md"
+        if "exemplo-entrega.md" not in texto:
+            problemas.append(f"{arq.relative_to(raiz)}: não aponta para exemplo-entrega.md")
+        if not exemplo.exists():
+            problemas.append(f"{arq.parent.relative_to(raiz)}: exemplo-entrega.md ausente")
+            continue
+        ex = exemplo.read_text(encoding="utf-8")
+        if len(ex.encode("utf-8")) > ORCAMENTO_EXEMPLO:
+            problemas.append(f"{exemplo.relative_to(raiz)}: {len(ex.encode('utf-8'))} bytes (limite {ORCAMENTO_EXEMPLO})")
+        encontrados = ROTULO.findall(ex)
+        if encontrados != rotulos:
+            problemas.append(f"{exemplo.relative_to(raiz)}: rótulos {encontrados} diferem do formato da skill {rotulos}")
 
     # índices
     textos = {}

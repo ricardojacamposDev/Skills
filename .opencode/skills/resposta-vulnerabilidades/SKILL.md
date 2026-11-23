@@ -71,6 +71,8 @@ Faça testes ativos contra a versão vulnerável somente em ambiente isolado e a
 5. **Implantação e rollback** — ordem, compatibilidade e monitoramento.
 6. **Pendências** — riscos residuais, exceções, responsáveis e prazos.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Distinga claramente “código corrigido”, “artefato construído” e “risco eliminado em produção”; são estados diferentes.
 
 Para prevenção contínua — pinning de dependências, builds confiáveis, SBOM e proveniência — use `supply-chain-construtor`; para bateria executável de verificação, `testes-vulnerabilidades`; quando o finding escala para incidente, `resposta-incidentes`; para segredo exposto, `gestao-segredos`; para achado de configuração de infraestrutura, `seguranca-infraestrutura`.

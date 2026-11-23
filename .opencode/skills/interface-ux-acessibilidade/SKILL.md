@@ -50,4 +50,6 @@ Não introduza biblioteca de componentes, dependência ou reestruturação globa
 4. **Evidências** — testes, viewports e limitações.
 5. **Decisões pendentes** — apenas as que exigem direção de produto ou design.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para validação automatizada de fluxos, use `testes-qualidade-web`; para impacto em métricas de carregamento e interação, complemente com `eficiencia-computacional`.

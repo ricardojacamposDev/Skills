@@ -60,4 +60,6 @@ Meça controles por comportamento observável, não apenas pela existência de p
 5. **Validação** — testes executados e evidências.
 6. **Decisões pendentes** — base legal, contratos ou interpretações para jurídico/DPO.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para controles de acesso e vulnerabilidades, complemente com `seguranca-aplicacoes`; para funcionalidades com modelos de linguagem, use `recursos-ia-generativa`. Privacidade e segurança se reforçam, mas uma não substitui a outra.

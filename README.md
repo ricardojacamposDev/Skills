@@ -232,13 +232,13 @@ Convenções deste repositório (mantenha-as para consistência):
 
 1. Um diretório por skill em `.opencode/skills/<nome>/SKILL.md`; `name` = nome do diretório, minúsculo com hífens.
 2. Frontmatter obrigatório: `name` e `description` (1–1024 caracteres, específica, com gatilhos de uso na terceira pessoa).
-3. Corpo: título, parágrafo de princípio, seções numeradas (`## 1. ...`) e fechamento com `## Formato de entrega`.
+3. Corpo: título, parágrafo de princípio, seções numeradas (`## 1. ...`) e fechamento com `## Formato de entrega` (lista numerada de rótulos em negrito) seguido da referência a `exemplo-entrega.md`. Esse arquivo, na pasta da skill, traz um exemplo preenchido e fictício com os **mesmos rótulos, na mesma ordem**; ao mudar o formato, atualize o exemplo (o verificador acusa a divergência).
 4. Referências cruzadas apenas para skills existentes; escopo complementar, nunca contraditório com outra skill.
 5. Linguagem baseada em evidência: diferencie confirmado/hipótese/fragilidade/falso positivo; exija autorização para teste ativo; dados sintéticos; sem segredos em exemplos.
 6. Ao adicionar skill nova: registre no índice e nas combinações de [`.opencode/skills/README.md`](./.opencode/skills/README.md). Os comandos das seções 5.2 e 5.3 não precisam mudar: eles não listam skills pelo nome.
 7. O texto de cada comando vive só no arquivo do atalho ([`tarefa.md`](./.opencode/commands/tarefa.md), [`revisao-final.md`](./.opencode/commands/revisao-final.md) ou [`varredura-seguranca.md`](./.opencode/commands/varredura-seguranca.md), em `.opencode/commands/`); os READMEs apenas apontam para ele. Ao alterar um comando, edite só esse arquivo e repita a cópia para a instalação global, se usar uma (seção 3.3).
 8. Ao mudar uma regra de segurança de uma skill, atualize ou acrescente o caso correspondente em [`.opencode/evals/casos.json`](./.opencode/evals/casos.json).
-9. Antes de commitar, rode `python3 .opencode/skills/verificar_skills.py`: ele confere frontmatter, referências cruzadas, índices, links, contagens, a fonte única dos comandos, scripts citados que existem, orçamento de 9 KB por `SKILL.md` e travas de segurança (ex.: exigir autorização, nunca copiar valor de segredo) que não podem sumir ao enxugar uma skill.
+9. Antes de commitar, rode `python3 .opencode/skills/verificar_skills.py`: ele confere frontmatter, referências cruzadas, índices, links, contagens, a fonte única dos comandos, scripts citados que existem, `exemplo-entrega.md` alinhado ao formato de cada skill, orçamento de 9 KB por `SKILL.md` e travas de segurança (ex.: exigir autorização, nunca copiar valor de segredo) que não podem sumir ao enxugar uma skill.
 
 ## 9. Limitações
 

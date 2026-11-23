@@ -58,4 +58,6 @@ Use um registro breve de decisão para escolhas difíceis de reverter: contexto,
 4. **Plano de evolução** — compatibilidade, migração, rollout e rollback.
 5. **Validação e riscos residuais** — evidências e questões abertas.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para implementação de UI, complemente com `interface-ux-acessibilidade`; para entrega operacional, use `entrega-producao-observabilidade`. Para ameaças concretas ou controles de segurança, use `seguranca-aplicacoes`; para registrar decisões difíceis de reverter, `documentacao-tecnica`; para reformar módulos legados de forma gradual, `codigo-legado-modernizacao`.

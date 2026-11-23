@@ -12,12 +12,14 @@ spec.loader.exec_module(vs)
 CORPO_CMD = "Faça uma revisão completa deste projeto e relate os problemas por prioridade, explicando de forma simples cada um deles. " * 2
 
 
-def montar(tmp, skills, readme_skills="", readme_raiz="", comandos=None):
+def montar(tmp, skills, readme_skills="", readme_raiz="", comandos=None, exemplos=None):
     raiz = Path(tmp)
     for nome, conteudo in skills.items():
         d = raiz / ".opencode/skills" / nome
         d.mkdir(parents=True)
         (d / "SKILL.md").write_text(conteudo, encoding="utf-8")
+        if exemplos is not False:
+            (d / "exemplo-entrega.md").write_text(EXEMPLO_OK if exemplos is None else exemplos, encoding="utf-8")
     (raiz / ".opencode/skills/README.md").write_text(readme_skills, encoding="utf-8")
     (raiz / "README.md").write_text(readme_raiz, encoding="utf-8")
     (raiz / ".opencode/commands").mkdir(parents=True)
@@ -27,7 +29,11 @@ def montar(tmp, skills, readme_skills="", readme_raiz="", comandos=None):
 
 
 def skill(nome, extra=""):
-    return f"---\nname: {nome}\ndescription: faz algo útil\n---\n# T\n{extra}\n"
+    return (f"---\nname: {nome}\ndescription: faz algo útil\n---\n# T\n{extra}\n\n## Formato de entrega\n\n"
+            "1. **Escopo** — x\n2. **Achados** — y\n\nExemplo: `exemplo-entrega.md`\n")
+
+
+EXEMPLO_OK = "# Ex\n\n1. **Escopo** — a\n\n2. **Achados** — b\n"
 
 
 class TesteVerificador(unittest.TestCase):
@@ -80,6 +86,22 @@ class TesteVerificador(unittest.TestCase):
         ok = self.rodar(skills={"gestao-segredos": skill("gestao-segredos", "Nunca copie o valor. Não rotacione sozinho.")},
                         readme_skills="`gestao-segredos`", readme_raiz="`gestao-segredos`")
         self.assertFalse(any("trava" in x for x in ok))
+
+    def test_exemplo_ausente(self):
+        p = self.rodar(skills={"alfa-um": skill("alfa-um")}, readme_skills="`alfa-um`", readme_raiz="`alfa-um`", exemplos=False)
+        self.assertTrue(any("exemplo-entrega.md ausente" in x for x in p))
+
+    def test_exemplo_com_rotulos_diferentes_do_formato(self):
+        p = self.rodar(skills={"alfa-um": skill("alfa-um")}, readme_skills="`alfa-um`", readme_raiz="`alfa-um`",
+                       exemplos="# Ex\n\n1. **Achados** — b\n\n2. **Escopo** — a\n")
+        self.assertTrue(any("diferem do formato" in x for x in p), "ordem trocada deve ser apontada")
+
+    def test_exemplo_grande_demais_e_skill_sem_referencia(self):
+        p = self.rodar(skills={"alfa-um": skill("alfa-um").replace("exemplo-entrega.md", "outro.md")},
+                       readme_skills="`alfa-um`", readme_raiz="`alfa-um`",
+                       exemplos=EXEMPLO_OK + "x" * vs.ORCAMENTO_EXEMPLO)
+        self.assertTrue(any("limite" in x for x in p))
+        self.assertTrue(any("não aponta para exemplo-entrega.md" in x for x in p))
 
 
 if __name__ == "__main__":

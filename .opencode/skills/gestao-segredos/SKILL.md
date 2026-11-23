@@ -72,4 +72,6 @@ Segredo exposto em repositório público: considere-o coletado por robôs em min
 4. **Armazenamento e prevenção** — mudanças em cofre, `.gitignore`, hooks e CI.
 5. **Pendências e riscos** — rotações aguardando responsável, limpeza de histórico, sinais de uso indevido.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para a varredura completa do sistema, use `testes-vulnerabilidades`; havendo indício de abuso, `resposta-incidentes`; para segredos em pipelines e artefatos, `supply-chain-construtor`; para dados pessoais expostos junto com credenciais, `privacidade-dados`; para infraestrutura e nuvem, `seguranca-infraestrutura`.

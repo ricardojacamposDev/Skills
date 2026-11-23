@@ -88,4 +88,6 @@ Exija autorização explícita, escopo e critérios de parada para qualquer test
 4. **Testes** — casos positivos/negativos e resultados.
 5. **Riscos residuais e limitações** — áreas não examinadas e suposições.
 
+Exemplo preenchido e fictício, para calibrar o nível de detalhe: `exemplo-entrega.md` (nesta pasta); não copie os fatos.
+
 Para investigar uma CVE ou reproduzir um achado, use `pesquisa-vulnerabilidades`; para conduzir patch e rollout, use `resposta-vulnerabilidades`; para bateria executável de testes (estáticos, dependências, HTTP e casos dinâmicos), use `testes-vulnerabilidades`; para segredos expostos ou armazenamento de credenciais, `gestao-segredos`; para IaC, contêineres, nuvem e rede, `seguranca-infraestrutura`. Trate requisitos de dados pessoais também com `privacidade-dados`; para funcionalidades com modelos de linguagem, `recursos-ia-generativa`.
