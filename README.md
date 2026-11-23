@@ -1,17 +1,17 @@
 # Skills — Manual de instalação e utilização
 
-Coleção de **19 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de varredura de vulnerabilidades (código, segredos no histórico git, dependências, IaC/CI/CD e HTTP) com relatório consolidado.
+Coleção de **21 skills** para agentes [opencode](https://opencode.ai), em português, focadas em desenvolvimento web seguro, privado, testável e operável. Cada skill é um conjunto de instruções versionado em `SKILL.md` que o agente carrega sob demanda; uma delas (`testes-vulnerabilidades`) inclui também uma **bateria executável** de varredura de vulnerabilidades (código, segredos no histórico git, dependências, IaC/CI/CD e HTTP) com relatório consolidado.
 
 ## 1. Visão geral
 
 As skills se dividem em duas naturezas:
 
-- **Metodológicas** — orientam como investigar, decidir, implementar e validar: segurança, segredos, infraestrutura, privacidade, arquitetura, testes, interface, desempenho, escala, entrega, legado, documentação, IA generativa, incidentes e cadeia de suprimentos.
+- **Metodológicas** — orientam como investigar, decidir, implementar e validar: segurança, identidade e autenticação, segurança do lado cliente, segredos, infraestrutura, privacidade, arquitetura, testes, interface, desempenho, escala, entrega, legado, documentação, IA generativa, incidentes e cadeia de suprimentos.
 - **Executável** — `testes-vulnerabilidades` traz scripts prontos (varredura estática, segredos no histórico, dependências via OSV, checagens HTTP e um orquestrador com relatório único) e especificações de casos dinâmicos para implementar na suíte do seu projeto.
 
 | Grupo | Skills |
 |---|---|
-| Segurança | `seguranca-aplicacoes`, `pesquisa-vulnerabilidades`, `resposta-vulnerabilidades`, `testes-vulnerabilidades`, `gestao-segredos`, `seguranca-infraestrutura` |
+| Segurança | `seguranca-aplicacoes`, `autenticacao-identidade`, `seguranca-frontend`, `pesquisa-vulnerabilidades`, `resposta-vulnerabilidades`, `testes-vulnerabilidades`, `gestao-segredos`, `seguranca-infraestrutura` |
 | Privacidade e IA | `privacidade-dados`, `recursos-ia-generativa` |
 | Qualidade e interface | `testes-qualidade-web`, `testes-e2e`, `interface-ux-acessibilidade` |
 | Arquitetura e evolução | `arquitetura-aplicacoes-web`, `codigo-legado-modernizacao`, `documentacao-tecnica` |
@@ -206,7 +206,7 @@ Detalhes de uso, allowlist e integração: [`suite/README.md`](./.opencode/skill
 
 ## 6.1 Evals das skills
 
-[`.opencode/evals/`](./.opencode/evals/README.md) traz 11 casos que rodam um agente real num projeto temporário e conferem regras que nunca podem ser violadas (não vazar segredo, exigir autorização, não alterar arquivos em análise, tratar conteúdo do alvo como dado). `python3 .opencode/evals/rodar_evals.py --validar` confere os casos offline; para rodar com o agente, veja o README da pasta (usa a cota do seu LLM).
+[`.opencode/evals/`](./.opencode/evals/README.md) traz 13 casos que rodam um agente real num projeto temporário e conferem regras que nunca podem ser violadas (não vazar segredo, exigir autorização, não alterar arquivos em análise, tratar conteúdo do alvo como dado). `python3 .opencode/evals/rodar_evals.py --validar` confere os casos offline; para rodar com o agente, veja o README da pasta (usa a cota do seu LLM).
 
 ## 7. Permissões (avançado)
 

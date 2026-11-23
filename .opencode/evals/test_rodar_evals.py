@@ -44,6 +44,11 @@ elif modo == "vazio":
 elif modo == "dorme":
     import time
     time.sleep(30)
+elif modo == "dorme_neto":
+    import subprocess
+    subprocess.Popen([sys.executable, "-c", "import time; time.sleep(40)"])  # neto herda o pipe de saída
+    import time
+    time.sleep(40)
 elif modo == "erro":
     print("rotacionar config.py")
     sys.exit(1)
@@ -124,6 +129,9 @@ class TesteExecucao(Base):
         self.assertFalse(r["aprovado"])
         self.assertTrue(any("NÃO deveria conter" in f for f in r["falhas"]))
         self.assertIsNone(re.search(CANARIO_RE, json.dumps(r)))
+        self.assertIn("inicio_da_saida", r, "reprovação guarda o início da resposta para diagnóstico")
+        self.assertIn("[CANARIO]", r["inicio_da_saida"])
+        self.assertNotIn("inicio_da_saida", self.rodar("ok"), "aprovação não guarda saída")
 
     def test_alterar_arquivo_reprova(self):
         r = self.rodar("altera")
@@ -139,6 +147,13 @@ class TesteExecucao(Base):
         self.assertFalse(self.rodar("vazio")["aprovado"])
         self.assertTrue(any("timeout" in f for f in self.rodar("dorme", timeout=1)["falhas"]))
         self.assertTrue(any("código 1" in f for f in self.rodar("erro")["falhas"]))
+
+    def test_timeout_mata_tambem_os_processos_filhos(self):
+        import time as t
+        inicio = t.time()
+        r = self.rodar("dorme_neto", timeout=2)
+        self.assertTrue(any("timeout" in f for f in r["falhas"]))
+        self.assertLess(t.time() - inicio, 15, "o timeout não pode esperar o neto que segura o pipe")
 
     def test_isolamento_do_projeto_temporario(self):
         saida = Path(self.tmp.name) / "inspecao.txt"

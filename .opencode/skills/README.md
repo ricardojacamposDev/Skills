@@ -21,6 +21,8 @@ O nome da skill também pode ser combinado com uma tarefa concreta. Em vez de pe
 | Corrigir ou responder a um alerta de vulnerabilidade | [`resposta-vulnerabilidades`](./resposta-vulnerabilidades/SKILL.md) | É preciso priorizar, conter, corrigir e comprovar a correção de um finding. |
 | Varrer o sistema em busca de vulnerabilidades | [`testes-vulnerabilidades`](./testes-vulnerabilidades/SKILL.md) | É pedida varredura/scan de segurança (código, segredos, dependências, IaC, CI/CD, HTTP), checagem de headers/cookies ou validação de segurança antes de release. |
 | Encontrar e tratar segredos expostos | [`gestao-segredos`](./gestao-segredos/SKILL.md) | Há chave/senha no código ou no histórico, credencial vazada, ou é preciso definir cofre, variáveis de ambiente e prevenção. |
+| Projetar ou revisar login, OAuth/OIDC, sessão, JWT, MFA e recuperação | [`autenticacao-identidade`](./autenticacao-identidade/SKILL.md) | A tarefa envolve login/logout, tokens, refresh, redirect URI, SSO, reset de senha, API keys ou identidade serviço a serviço. |
+| Endurecer o lado cliente (navegador) | [`seguranca-frontend`](./seguranca-frontend/SKILL.md) | A tarefa envolve XSS no DOM, CSP, tokens no navegador, scripts de terceiros, `postMessage` ou segredos em bundles. |
 | Revisar infraestrutura, nuvem e contêineres | [`seguranca-infraestrutura`](./seguranca-infraestrutura/SKILL.md) | A tarefa envolve Terraform/IaC, Docker, Kubernetes, IAM, rede exposta, buckets, TLS ou servidores web. |
 | Comandar resposta a incidente ou postmortem | [`resposta-incidentes`](./resposta-incidentes/SKILL.md) | Há interrupção, vazamento ou suspeita de comprometimento em andamento, ou preparo de playbook, escalonamento e postmortem. |
 | Prevenir riscos na cadeia de suprimentos | [`supply-chain-construtor`](./supply-chain-construtor/SKILL.md) | A tarefa envolve adicionar/atualizar dependências, pipeline de build, publicação/consumo de artefatos, pinning, SBOM ou proveniência. |
@@ -46,6 +48,13 @@ Exemplos:
 
 - “Use `seguranca-aplicacoes` para modelar ameaças antes de implementar o upload de arquivos.”
 - “Revise a autorização dos endpoints alterados, corrija falhas comprovadas e acrescente testes negativos.”
+
+Para aprofundar dois temas que `seguranca-aplicacoes` só cobre em linhas gerais: `autenticacao-identidade` (OAuth/OIDC com PKCE, JWT, sessão, MFA, recuperação de conta, chaves de API) e `seguranca-frontend` (XSS no cliente, CSP, onde guardar tokens, scripts de terceiros, `postMessage`). Elas se complementam: o fluxo de login é desenhado na primeira e o armazenamento do token no navegador, na segunda.
+
+Exemplos:
+
+- “Use `autenticacao-identidade` para revisar o login com o provedor OIDC: redirect URI, PKCE, validação do JWT e logout.”
+- “Use `seguranca-frontend` para revisar onde guardamos os tokens e se o componente de comentários permite XSS.”
 
 ### Pesquisa e resposta a vulnerabilidades
 
@@ -152,6 +161,8 @@ Quando algo já quebrou, use `resposta-incidentes` para comandar o evento: papé
 | Endurecer pipeline e dependências | `supply-chain-construtor` → `testes-vulnerabilidades` (bateria) → `resposta-vulnerabilidades` (quando houver alerta) |
 | Varredura completa do sistema | `testes-vulnerabilidades` (varredura.py) → `gestao-segredos` / `seguranca-infraestrutura` / `seguranca-aplicacoes` (triagem por tipo) → `resposta-vulnerabilidades` |
 | Credencial vazada | `gestao-segredos` (contenção e rotação) → `resposta-incidentes` (se houver uso indevido) → `testes-vulnerabilidades` (confirmar varredura limpa) |
+| Revisar login e sessão | `autenticacao-identidade` → `seguranca-frontend` (tokens no navegador) → `testes-vulnerabilidades` (caso `autenticacao-sessao`) → `testes-e2e` (fluxos de login e acesso negado) |
+| Endurecer o front-end | `seguranca-frontend` → `testes-vulnerabilidades` (HTTP: CSP e cabeçalhos, caso `saida-xss`) → `interface-ux-acessibilidade` |
 | Revisar infraestrutura antes do deploy | `seguranca-infraestrutura` → `supply-chain-construtor` (imagens) → `entrega-producao-observabilidade` |
 
 As combinações são sugestões, não uma sequência obrigatória. Se a tarefa for pequena, use apenas a skill necessária.

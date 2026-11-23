@@ -11,7 +11,8 @@ arquivos em análise, tratar conteúdo do alvo como dado).
   python3 .opencode/evals/rodar_evals.py --listar
   python3 .opencode/evals/rodar_evals.py --agente "opencode run --archived {prompt}" [--filtro id] [--repeticoes 3]
 
---agente é um comando com o marcador {prompt} (um único argumento; não passa por shell). Roda com
+--agente é um comando com o marcador {prompt} (um único argumento; não passa por shell). Com o opencode, use --standalone
+(servidor próprio no diretório do projeto temporário). Roda com
 as permissões do seu cliente: NÃO use auto-aprovação; o projeto é temporário, mas o agente é real e
 consome cota/custo. O valor de teste {CANARIO} é aleatório a cada execução e nunca é gravado.
 Saída 0 se todos os casos passarem; 1 se algum falhar; 2 erro de uso.
@@ -25,6 +26,7 @@ import re
 import secrets
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -157,12 +159,22 @@ def rodar_caso(caso, agente, timeout, raiz_repo=RAIZ_OPENCODE):
         ignorar = IGNORAR_PADRAO + tuple(caso.get("ignorar_alteracoes_em", []))
         antes = fotografar(tmp, ignorar)
         try:
-            p = subprocess.run(comando(agente, subst(caso["prompt"], canario)), cwd=tmp, capture_output=True,
-                               timeout=timeout, stdin=subprocess.DEVNULL)
-            saida = p.stdout.decode("utf-8", errors="replace")
-            erro = None if p.returncode == 0 else f"agente terminou com código {p.returncode}"
-        except subprocess.TimeoutExpired:
-            return dict(id=caso["id"], aprovado=False, falhas=[f"timeout de {timeout}s"], segundos=timeout, tamanho_saida=0)
+            # Grupo de processos próprio: no timeout mata o agente e os filhos que segurariam o pipe aberto
+            # (com subprocess.run o timeout podia ser ignorado por muito tempo).
+            proc = subprocess.Popen(comando(agente, subst(caso["prompt"], canario)), cwd=tmp, stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+            try:
+                bruto, _ = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    proc.kill()
+                proc.communicate()
+                return dict(id=caso["id"], aprovado=False, falhas=[f"timeout de {timeout}s"],
+                            segundos=round(time.time() - inicio, 1), tamanho_saida=0)
+            saida = bruto.decode("utf-8", errors="replace")
+            erro = None if proc.returncode == 0 else f"agente terminou com código {proc.returncode}"
         except OSError as e:
             return dict(id=caso["id"], aprovado=False, falhas=[f"não foi possível executar o agente: {e}"], segundos=0, tamanho_saida=0)
         depois = fotografar(tmp, ignorar)
@@ -171,8 +183,12 @@ def rodar_caso(caso, agente, timeout, raiz_repo=RAIZ_OPENCODE):
             falhas.insert(0, erro)
         if not saida.strip():
             falhas.insert(0, "agente não produziu resposta")
-        return dict(id=caso["id"], aprovado=not falhas, falhas=falhas, segundos=round(time.time() - inicio, 1),
-                    tamanho_saida=len(saida))
+        resultado = dict(id=caso["id"], aprovado=not falhas, falhas=falhas, segundos=round(time.time() - inicio, 1),
+                         tamanho_saida=len(saida))
+        if falhas:
+            # Para diagnosticar reprovações (resposta curta, recusa, formato inesperado). O canário é mascarado.
+            resultado["inicio_da_saida"] = saida.replace(canario, "[CANARIO]")[:1500]
+        return resultado
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -212,10 +228,14 @@ def principal(argv=None):
         print("erro: informe --agente (ou use --validar/--listar)", file=sys.stderr)
         return 2
     try:
-        comando(args.agente, "x")
+        argv_teste = comando(args.agente, "x")
     except ValueError as e:
         print(f"erro: {e}", file=sys.stderr)
         return 2
+    if os.path.basename(argv_teste[0]) == "opencode" and "--standalone" not in argv_teste:
+        print("AVISO: sem --standalone, o opencode usa um serviço em segundo plano que pode operar em outro "
+              "diretório (já observado: o agente analisou o repositório real em vez do projeto temporário). "
+              "Use: opencode run --standalone --archived {prompt}", file=sys.stderr)
     if args.repeticoes < 1 or not (0 < args.minimo <= 1):
         print("erro: --repeticoes >= 1 e 0 < --minimo <= 1", file=sys.stderr)
         return 2

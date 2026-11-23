@@ -38,6 +38,7 @@ Considere abuso de lógica, IDOR/BOLA, escalada de privilégio, confusão entre 
 - Use mecanismos mantidos pelo framework; não invente protocolos.
 - Verifique expiração, revogação, rotação, fixação de sessão e proteção de cookies/tokens.
 - Não trate token válido como autorização suficiente.
+- Para OAuth/OIDC, JWT, sessão, MFA e recuperação em profundidade, use `autenticacao-identidade`; para XSS no cliente, CSP e tokens no navegador, `seguranca-frontend`.
 
 ### Autorização e multitenancy
 
